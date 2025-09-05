@@ -60,6 +60,9 @@ import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlObject;
+import org.apache.commons.codec.binary.Base64;
+
+import java.util.Locale;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTObject;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
@@ -454,8 +457,26 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
                 XWPFPictureData data = picture.getPictureData();
                 if (data != null) {
                     AttributesImpl attr = new AttributesImpl();
-
-                    attr.addAttribute("", "src", "src", "CDATA", "embedded:" + data.getFileName());
+                    
+                    // Generate base64 data URL instead of embedded: reference
+                    try {
+                        byte[] imageBytes = data.getData();
+                        // Use the Package Content Type - getPictureType() returns int, let's try this approach
+                        String extension = picture.getPictureData().suggestFileExtension();
+                        String mimeType = guessMimeTypeFromExtension(extension);
+                        if (imageBytes != null && mimeType != null) {
+                            String base64Data = Base64.encodeBase64String(imageBytes);
+                            String dataUrl = "data:" + mimeType + ";base64," + base64Data;
+                            attr.addAttribute("", "src", "src", "CDATA", dataUrl);
+                        } else {
+                            // Fallback to embedded: if data is not available
+                            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + data.getFileName());
+                        }
+                    } catch (Exception e) {
+                        // Fallback to embedded: if base64 conversion fails
+                        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + data.getFileName());
+                    }
+                    
                     attr.addAttribute("", "alt", "alt", "CDATA", picture.getDescription());
 
                     xhtml.startElement("img", attr);
@@ -571,6 +592,30 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
             }
         }
 
+    }
+    
+    private String guessMimeTypeFromExtension(String extension) {
+        if (extension == null) return null;
+        switch (extension.toLowerCase(Locale.ROOT)) {
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "png":
+                return "image/png";
+            case "gif":
+                return "image/gif";
+            case "bmp":
+                return "image/bmp";
+            case "tiff":
+            case "tif":
+                return "image/tiff";
+            case "svg":
+                return "image/svg+xml";
+            case "webp":
+                return "image/webp";
+            default:
+                return "image/" + extension.toLowerCase(Locale.ROOT);
+        }
     }
 
 }

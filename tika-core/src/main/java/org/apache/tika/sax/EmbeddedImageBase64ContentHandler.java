@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tika.server.core.resource;
+package org.apache.tika.sax;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,8 +35,6 @@ import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.sax.ContentHandlerDecorator;
-import org.apache.tika.sax.XHTMLContentHandler;
 
 /**
  * Content handler that converts embedded image URLs (embedded:filename.png) 
@@ -97,7 +95,7 @@ public class EmbeddedImageBase64ContentHandler extends ContentHandlerDecorator {
     }
     
     private String getMimeTypeFromFilename(String filename) {
-        String extension = filename.toLowerCase();
+        String extension = filename.toLowerCase(java.util.Locale.ROOT);
         
         if (extension.endsWith(".png")) {
             return "image/png";

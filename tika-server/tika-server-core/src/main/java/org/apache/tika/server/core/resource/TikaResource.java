@@ -86,7 +86,7 @@ import org.apache.tika.server.core.ParseContextConfig;
 import org.apache.tika.server.core.ServerStatus;
 import org.apache.tika.server.core.TikaServerConfig;
 import org.apache.tika.server.core.TikaServerParseException;
-import org.apache.tika.server.core.resource.EmbeddedImageBase64ContentHandler;
+import org.apache.tika.sax.EmbeddedImageBase64ContentHandler;
 import org.apache.tika.utils.ExceptionUtils;
 import org.apache.tika.utils.XMLReaderUtils;
 
