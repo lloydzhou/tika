@@ -88,6 +88,7 @@ import org.apache.tika.mime.MimeTypes;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.CompositeParser;
 import org.apache.tika.parser.DigestingParser;
+import org.apache.tika.parser.microsoft.OfficeParserConfig;
 import org.apache.tika.parser.NetworkParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
@@ -686,6 +687,11 @@ public class TikaCLI {
         detector = config.getDetector();
         context.set(Parser.class, parser);
         context.set(PasswordProvider.class, new SimplePasswordProvider(password));
+        
+        // Enable SAX-based DOCX extractor for better image handling
+        OfficeParserConfig officeParserConfig = new OfficeParserConfig();
+        officeParserConfig.setUseSAXDocxExtractor(true);
+        context.set(OfficeParserConfig.class, officeParserConfig);
     }
 
     private void displayMetModels() {

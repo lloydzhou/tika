@@ -19,8 +19,10 @@ package org.apache.tika.sax;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.xml.sax.Attributes;
@@ -44,6 +46,8 @@ public class EmbeddedImageBase64ContentHandler extends ContentHandlerDecorator {
     
     private final Map<String, byte[]> imageCache = new HashMap<>();
     private final ParseContext parseContext;
+    private final StringBuilder htmlBuffer = new StringBuilder();
+    private boolean isBuffering = false;
     
     public EmbeddedImageBase64ContentHandler(ContentHandler handler, ParseContext parseContext) {
         super(handler);
@@ -55,6 +59,41 @@ public class EmbeddedImageBase64ContentHandler extends ContentHandlerDecorator {
         
         ImageCapturingExtractor imageExtractor = new ImageCapturingExtractor(originalExtractor, imageCache);
         parseContext.set(EmbeddedDocumentExtractor.class, imageExtractor);
+    }
+    
+    @Override
+    public void endDocument() throws SAXException {
+        // At end of document, process any buffered content and convert embedded: URLs
+        if (htmlBuffer.length() > 0) {
+            String content = htmlBuffer.toString();
+            content = convertEmbeddedUrls(content);
+            
+            // Output the processed content as characters
+            char[] chars = content.toCharArray();
+            super.characters(chars, 0, chars.length);
+        }
+        
+        super.endDocument();
+    }
+    
+    private String convertEmbeddedUrls(String content) {
+        // Convert embedded: URLs to base64 data URLs using simple string replacement
+        String result = content;
+        
+        for (Map.Entry<String, byte[]> entry : imageCache.entrySet()) {
+            String filename = entry.getKey();
+            byte[] imageData = entry.getValue();
+            
+            String embeddedUrl = "src=\"embedded:" + filename + "\"";
+            if (result.contains(embeddedUrl)) {
+                String mimeType = getMimeTypeFromFilename(filename);
+                String base64 = Base64.getEncoder().encodeToString(imageData);
+                String dataUrl = "src=\"data:" + mimeType + ";base64," + base64 + "\"";
+                result = result.replace(embeddedUrl, dataUrl);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -150,7 +189,8 @@ public class EmbeddedImageBase64ContentHandler extends ContentHandlerDecorator {
                     // Read the image data
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     IOUtils.copy(tis, baos);
-                    imageCache.put(name, baos.toByteArray());
+                    byte[] imageBytes = baos.toByteArray();
+                    imageCache.put(name, imageBytes);
                     
                     // Reset the stream for the delegate
                     tis.reset();
