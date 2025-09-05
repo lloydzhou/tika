@@ -86,6 +86,7 @@ import org.apache.tika.server.core.ParseContextConfig;
 import org.apache.tika.server.core.ServerStatus;
 import org.apache.tika.server.core.TikaServerConfig;
 import org.apache.tika.server.core.TikaServerParseException;
+import org.apache.tika.server.core.resource.EmbeddedImageBase64ContentHandler;
 import org.apache.tika.utils.ExceptionUtils;
 import org.apache.tika.utils.XMLReaderUtils;
 
@@ -628,7 +629,6 @@ public class TikaResource {
         fillMetadata(parser, metadata, httpHeaders);
         fillParseContext(httpHeaders, metadata, context);
 
-
         logRequest(LOG, "/tika", metadata);
 
         return outputStream -> {
@@ -651,7 +651,15 @@ public class TikaResource {
                         .getTransformer()
                         .setOutputProperty(OutputKeys.VERSION, "1.1");
                 handler.setResult(new StreamResult(writer));
-                content = new ExpandedTitleContentHandler(handler);
+                
+                ContentHandler baseHandler = new ExpandedTitleContentHandler(handler);
+                
+                // For HTML format, wrap with our base64 image converter
+                if ("html".equals(format)) {
+                    content = new EmbeddedImageBase64ContentHandler(baseHandler, context);
+                } else {
+                    content = baseHandler;
+                }
             } catch (TransformerConfigurationException | TikaException e) {
                 throw new WebApplicationException(e);
             }
