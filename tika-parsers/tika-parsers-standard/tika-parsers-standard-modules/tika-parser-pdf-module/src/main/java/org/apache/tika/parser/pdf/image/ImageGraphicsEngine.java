@@ -70,6 +70,8 @@ import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.parser.pdf.PDMetadataExtractor;
 import org.apache.tika.sax.EmbeddedContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
+import org.apache.tika.config.ImageConfig;
+import org.apache.tika.utils.ImageUtils;
 
 /**
  * Copied nearly verbatim from PDFBox
@@ -389,10 +391,26 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
         String suffix = getSuffix(pdImage, metadata);
         String fileName = "image" + imageNumber + "." + suffix;
 
+        ImageConfig imageConfig = parseContext.get(ImageConfig.class);
+        if (imageConfig == null) {
+            imageConfig = ImageConfig.DEFAULT;
+        }
 
-        AttributesImpl attr = new AttributesImpl();
-        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + fileName);
-        attr.addAttribute("", "alt", "alt", "CDATA", fileName);
+        // Try to get image data for base64 conversion if configured
+        byte[] imageData = null;
+        if (imageConfig.isConvertEmbeddedToBase64()) {
+            try {
+                UnsynchronizedByteArrayOutputStream buffer = UnsynchronizedByteArrayOutputStream.builder().get();
+                writeToBuffer(pdImage, suffix, useDirectJPEG, buffer);
+                imageData = buffer.toByteArray();
+            } catch (Exception e) {
+                // If we can't get image data, fall back to embedded: URL
+                imageData = null;
+            }
+        }
+
+        String mimeType = ImageUtils.guessMimeTypeFromFilename(fileName);
+        AttributesImpl attr = ImageUtils.createImageAttributes(imageConfig, imageData, fileName, mimeType, fileName);
         xhtml.startElement("img", attr);
         xhtml.endElement("img");
 
