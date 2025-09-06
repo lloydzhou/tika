@@ -90,7 +90,7 @@ public class OOXMLTikaBodyPartHandler
         this.styles = styles;
         this.listManager = listManager;
         this.includeDeletedText = parserConfig.isIncludeDeletedContent();
-        this.includeMoveFromContent = parserConfig.isIncludeMoveFromContent();
+        this.includeMoveFromText = parserConfig.isIncludeMoveFromContent();
         this.context = context;
     }
 
