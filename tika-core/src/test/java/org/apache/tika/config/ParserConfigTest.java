@@ -70,8 +70,11 @@ public class ParserConfigTest {
         // The old ImageConfig approach had these problems:
         // 1. Global configuration - couldn't configure per parser
         // 2. Not configurable via tika-config.xml
-        // 3. Required special handling via EmbeddedImageBase64ContentHandler
+        // 3. Required special handling via EmbeddedImageBase64ContentHandler (now removed)
         // 4. Created unnecessary complexity in the extraction pipeline
+        
+        // The new approach addresses all these issues by moving the configuration
+        // into each parser's own configuration class
         
         // The new approach addresses all these issues
         assertTrue(true, "New parser-specific approach solves ImageConfig limitations");

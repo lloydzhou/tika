@@ -86,7 +86,6 @@ import org.apache.tika.server.core.ParseContextConfig;
 import org.apache.tika.server.core.ServerStatus;
 import org.apache.tika.server.core.TikaServerConfig;
 import org.apache.tika.server.core.TikaServerParseException;
-import org.apache.tika.sax.EmbeddedImageBase64ContentHandler;
 import org.apache.tika.utils.ExceptionUtils;
 import org.apache.tika.utils.XMLReaderUtils;
 
@@ -654,12 +653,9 @@ public class TikaResource {
                 
                 ContentHandler baseHandler = new ExpandedTitleContentHandler(handler);
                 
-                // For HTML format, wrap with our base64 image converter
-                if ("html".equals(format)) {
-                    content = new EmbeddedImageBase64ContentHandler(baseHandler, context);
-                } else {
-                    content = baseHandler;
-                }
+                // Base64 image conversion is now handled directly by parsers through their configuration parameters.
+                // Configure via tika-config.xml parameters for specific parsers.
+                content = baseHandler;
             } catch (TransformerConfigurationException | TikaException e) {
                 throw new WebApplicationException(e);
             }

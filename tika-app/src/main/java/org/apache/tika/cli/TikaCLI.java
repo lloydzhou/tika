@@ -99,7 +99,6 @@ import org.apache.tika.parser.digestutils.CommonsDigester;
 import org.apache.tika.sax.BasicContentHandlerFactory;
 import org.apache.tika.sax.BodyContentHandler;
 import org.apache.tika.sax.ContentHandlerFactory;
-import org.apache.tika.sax.EmbeddedImageBase64ContentHandler;
 import org.apache.tika.sax.ExpandedTitleContentHandler;
 import org.apache.tika.sax.RecursiveParserWrapperHandler;
 import org.apache.tika.sax.WriteOutContentHandler;
@@ -216,15 +215,12 @@ public class TikaCLI {
         protected ContentHandler getContentHandler(OutputStream output, Metadata metadata) throws Exception {
             ContentHandler baseHandler = new ExpandedTitleContentHandler(getTransformerHandler(output, "html", encoding, prettyPrint));
             
-            // If we're not extracting files to disk, use the base64 image handler
-            EmbeddedDocumentExtractor extractor = context.get(EmbeddedDocumentExtractor.class);
-            boolean isFileExtractor = extractor instanceof FileEmbeddedDocumentExtractor;
-            
-            if (!isFileExtractor) {
-                return new EmbeddedImageBase64ContentHandler(baseHandler, context);
-            } else {
-                return baseHandler;
-            }
+            // Base64 image conversion is now handled directly by parsers through their configuration parameters.
+            // Configure via tika-config.xml:
+            // <parser class="org.apache.tika.parser.pdf.PDFParser">
+            //   <params><param name="convertEmbeddedImagesToBase64" type="bool">true</param></params>
+            // </parser>
+            return baseHandler;
         }
     };
 
