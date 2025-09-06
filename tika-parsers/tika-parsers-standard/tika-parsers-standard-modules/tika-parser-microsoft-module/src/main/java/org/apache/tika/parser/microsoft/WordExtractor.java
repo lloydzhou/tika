@@ -58,6 +58,8 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
+import org.apache.commons.codec.binary.Base64;
+
 import org.apache.tika.exception.EncryptedDocumentException;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;
@@ -606,7 +608,23 @@ public class WordExtractor extends AbstractPOIFSExtractor {
 
         // Output the img tag
         AttributesImpl attr = new AttributesImpl();
-        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+        
+        // Generate base64 data URL instead of embedded: reference
+        try {
+            byte[] imageBytes = picture.getContent();
+            if (imageBytes != null && mimeType != null) {
+                String base64Data = Base64.encodeBase64String(imageBytes);
+                String dataUrl = "data:" + mimeType + ";base64," + base64Data;
+                attr.addAttribute("", "src", "src", "CDATA", dataUrl);
+            } else {
+                // Fallback to embedded: if data is not available
+                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+            }
+        } catch (Exception e) {
+            // Fallback to embedded: if base64 conversion fails
+            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+        }
+        
         attr.addAttribute("", "alt", "alt", "CDATA", filename);
         xhtml.startElement("img", attr);
         xhtml.endElement("img");

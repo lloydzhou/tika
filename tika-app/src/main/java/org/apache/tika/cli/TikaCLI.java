@@ -88,6 +88,7 @@ import org.apache.tika.mime.MimeTypes;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.CompositeParser;
 import org.apache.tika.parser.DigestingParser;
+import org.apache.tika.parser.microsoft.OfficeParserConfig;
 import org.apache.tika.parser.NetworkParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
@@ -98,6 +99,7 @@ import org.apache.tika.parser.digestutils.CommonsDigester;
 import org.apache.tika.sax.BasicContentHandlerFactory;
 import org.apache.tika.sax.BodyContentHandler;
 import org.apache.tika.sax.ContentHandlerFactory;
+import org.apache.tika.sax.EmbeddedImageBase64ContentHandler;
 import org.apache.tika.sax.ExpandedTitleContentHandler;
 import org.apache.tika.sax.RecursiveParserWrapperHandler;
 import org.apache.tika.sax.WriteOutContentHandler;
@@ -212,7 +214,17 @@ public class TikaCLI {
     private final OutputType HTML = new OutputType() {
         @Override
         protected ContentHandler getContentHandler(OutputStream output, Metadata metadata) throws Exception {
-            return new ExpandedTitleContentHandler(getTransformerHandler(output, "html", encoding, prettyPrint));
+            ContentHandler baseHandler = new ExpandedTitleContentHandler(getTransformerHandler(output, "html", encoding, prettyPrint));
+            
+            // If we're not extracting files to disk, use the base64 image handler
+            EmbeddedDocumentExtractor extractor = context.get(EmbeddedDocumentExtractor.class);
+            boolean isFileExtractor = extractor instanceof FileEmbeddedDocumentExtractor;
+            
+            if (!isFileExtractor) {
+                return new EmbeddedImageBase64ContentHandler(baseHandler, context);
+            } else {
+                return baseHandler;
+            }
         }
     };
 
@@ -675,6 +687,11 @@ public class TikaCLI {
         detector = config.getDetector();
         context.set(Parser.class, parser);
         context.set(PasswordProvider.class, new SimplePasswordProvider(password));
+        
+        // Enable SAX-based DOCX extractor for better image handling
+        OfficeParserConfig officeParserConfig = new OfficeParserConfig();
+        officeParserConfig.setUseSAXDocxExtractor(true);
+        context.set(OfficeParserConfig.class, officeParserConfig);
     }
 
     private void displayMetModels() {
