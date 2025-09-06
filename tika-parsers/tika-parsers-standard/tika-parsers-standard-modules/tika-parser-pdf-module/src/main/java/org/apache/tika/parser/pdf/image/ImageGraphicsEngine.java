@@ -70,7 +70,6 @@ import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.parser.pdf.PDMetadataExtractor;
 import org.apache.tika.sax.EmbeddedContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
-import org.apache.tika.config.ImageConfig;
 import org.apache.tika.utils.ImageUtils;
 
 /**
