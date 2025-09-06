@@ -29,6 +29,9 @@ import org.apache.tika.parser.microsoft.OfficeParserConfig;
 import org.apache.tika.parser.microsoft.WordExtractor;
 import org.apache.tika.parser.microsoft.ooxml.xwpf.XWPFStylesShim;
 import org.apache.tika.sax.XHTMLContentHandler;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.config.ImageConfig;
+import org.apache.tika.utils.ImageUtils;
 
 public class OOXMLTikaBodyPartHandler
         implements OOXMLWordAndPowerPointTextHandler.XWPFBodyContentsHandler {
@@ -42,6 +45,7 @@ public class OOXMLTikaBodyPartHandler
     private final boolean includeDeletedText;
     private final boolean includeMoveFromText;
     private final XWPFStylesShim styles;
+    private final ParseContext context;
 
     private int pDepth = 0; //paragraph depth
     private int tableDepth = 0;//table depth
@@ -65,20 +69,31 @@ public class OOXMLTikaBodyPartHandler
     private String paragraphTag = null;
 
     public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml) {
+        this(xhtml, (ParseContext) null);
+    }
+
+    public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, ParseContext context) {
         this.xhtml = xhtml;
         this.styles = XWPFStylesShim.EMPTY_STYLES;
         this.listManager = XWPFListManager.EMPTY_LIST;
         this.includeDeletedText = false;
         this.includeMoveFromText = false;
+        this.context = context;
     }
 
     public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, XWPFStylesShim styles,
                                     XWPFListManager listManager, OfficeParserConfig parserConfig) {
+        this(xhtml, styles, listManager, parserConfig, null);
+    }
+
+    public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, XWPFStylesShim styles,
+                                    XWPFListManager listManager, OfficeParserConfig parserConfig, ParseContext context) {
         this.xhtml = xhtml;
         this.styles = styles;
         this.listManager = listManager;
         this.includeDeletedText = parserConfig.isIncludeDeletedContent();
-        this.includeMoveFromText = parserConfig.isIncludeMoveFromContent();
+        this.includeMoveFromContent = parserConfig.isIncludeMoveFromContent();
+        this.context = context;
     }
 
     @Override
@@ -324,19 +339,18 @@ public class OOXMLTikaBodyPartHandler
 
     @Override
     public void embeddedPicRef(String picFileName, String picDescription) throws SAXException {
-
-        AttributesImpl attr = new AttributesImpl();
-        if (picFileName != null) {
-            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
+        ImageConfig imageConfig = (context != null) ? context.get(ImageConfig.class) : null;
+        if (imageConfig == null) {
+            imageConfig = ImageConfig.DEFAULT;
         }
-        if (picDescription != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
-        }
+        
+        // Note: This method doesn't have access to image data, so we can only 
+        // create embedded: URLs here. The actual base64 conversion needs to happen
+        // elsewhere where the image data is available.
+        AttributesImpl attr = ImageUtils.createImageAttributes(imageConfig, null, picFileName, null, picDescription);
 
         xhtml.startElement("img", attr);
         xhtml.endElement("img");
-
-
     }
 
     @Override

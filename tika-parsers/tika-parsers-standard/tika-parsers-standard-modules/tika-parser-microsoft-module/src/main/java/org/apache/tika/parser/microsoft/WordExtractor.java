@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
-import org.apache.commons.codec.binary.Base64;
+
 
 import org.apache.tika.exception.EncryptedDocumentException;
 import org.apache.tika.exception.TikaException;
@@ -68,6 +68,8 @@ import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.XHTMLContentHandler;
+import org.apache.tika.config.ImageConfig;
+import org.apache.tika.utils.ImageUtils;
 
 public class WordExtractor extends AbstractPOIFSExtractor {
 
@@ -607,25 +609,19 @@ public class WordExtractor extends AbstractPOIFSExtractor {
         String mimeType = picture.getMimeType();
 
         // Output the img tag
-        AttributesImpl attr = new AttributesImpl();
-        
-        // Generate base64 data URL instead of embedded: reference
-        try {
-            byte[] imageBytes = picture.getContent();
-            if (imageBytes != null && mimeType != null) {
-                String base64Data = Base64.encodeBase64String(imageBytes);
-                String dataUrl = "data:" + mimeType + ";base64," + base64Data;
-                attr.addAttribute("", "src", "src", "CDATA", dataUrl);
-            } else {
-                // Fallback to embedded: if data is not available
-                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
-            }
-        } catch (Exception e) {
-            // Fallback to embedded: if base64 conversion fails
-            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+        ImageConfig imageConfig = context.get(ImageConfig.class);
+        if (imageConfig == null) {
+            imageConfig = ImageConfig.DEFAULT;
         }
         
-        attr.addAttribute("", "alt", "alt", "CDATA", filename);
+        byte[] imageBytes = null;
+        try {
+            imageBytes = picture.getContent();
+        } catch (Exception e) {
+            // Image data not available
+        }
+        
+        AttributesImpl attr = ImageUtils.createImageAttributes(imageConfig, imageBytes, filename, mimeType, filename);
         xhtml.startElement("img", attr);
         xhtml.endElement("img");
 
