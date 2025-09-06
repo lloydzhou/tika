@@ -37,6 +37,8 @@ public class OfficeParserConfig implements Serializable {
 
     private boolean writeSelectHeadersInBody = false;
 
+    private boolean convertEmbeddedImagesToBase64 = false;
+
     private boolean extractAllAlternativesFromMSG = false;
     private String dateOverrideFormat = null;
     private int maxOverride = 0;//ignore
@@ -290,6 +292,27 @@ public class OfficeParserConfig implements Serializable {
 
     public void setWriteSelectHeadersInBody(boolean writeSelectHeadersInBody) {
         this.writeSelectHeadersInBody = writeSelectHeadersInBody;
+    }
+
+    /**
+     * Whether to convert embedded: image URLs to base64 data URLs.
+     * Default is false (use embedded: URLs).
+     *
+     * @return true if embedded: URLs should be converted to base64 data URLs
+     */
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return convertEmbeddedImagesToBase64;
+    }
+
+    /**
+     * Set whether to convert embedded: image URLs to base64 data URLs.
+     * When set to true, inline images will be converted to data: URLs with base64 encoding.
+     * When set to false (default), traditional embedded: URLs will be used.
+     *
+     * @param convertEmbeddedImagesToBase64 true to convert to base64, false to use embedded: URLs
+     */
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        this.convertEmbeddedImagesToBase64 = convertEmbeddedImagesToBase64;
     }
 }
 

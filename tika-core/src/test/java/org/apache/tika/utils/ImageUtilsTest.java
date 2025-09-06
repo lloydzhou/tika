@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+
 import org.junit.jupiter.api.Test;
 import org.xml.sax.helpers.AttributesImpl;
 
@@ -57,7 +59,7 @@ public class ImageUtilsTest {
     @Test
     public void testCreateImageAttributesBase64() {
         ImageConfig config = ImageConfig.BASE64;
-        byte[] imageData = "fake image data".getBytes();
+        byte[] imageData = "fake image data".getBytes(StandardCharsets.UTF_8);
         AttributesImpl attrs = ImageUtils.createImageAttributes(config, imageData, "test.png", "image/png", "Test Image");
         
         assertTrue(attrs.getValue("src").startsWith("data:image/png;base64,"));

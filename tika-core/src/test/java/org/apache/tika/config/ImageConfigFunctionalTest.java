@@ -18,6 +18,8 @@ package org.apache.tika.config;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+
 import org.junit.jupiter.api.Test;
 import org.xml.sax.helpers.AttributesImpl;
 
@@ -76,7 +78,7 @@ public class ImageConfigFunctionalTest {
         assertTrue(attrs3.getValue("src").equals("embedded:test.png"));
         
         // Scenario 4: Base64 config with data
-        byte[] imageData = "test image data".getBytes();
+        byte[] imageData = "test image data".getBytes(StandardCharsets.UTF_8);
         AttributesImpl attrs4 = ImageUtils.createImageAttributes(
             ImageConfig.BASE64, imageData, "test.png", "image/png", "alt text");
         assertTrue(attrs4.getValue("src").startsWith("data:image/png;base64,"));

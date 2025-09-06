@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
@@ -76,7 +77,7 @@ public class ImageConfigIntegrationTest {
         assertTrue(attrs.getValue("src").startsWith("embedded:"));
         
         // Test with BASE64 config and data
-        byte[] testData = "test data".getBytes();
+        byte[] testData = "test data".getBytes(StandardCharsets.UTF_8);
         attrs = org.apache.tika.utils.ImageUtils.createImageAttributes(
             ImageConfig.BASE64, testData, "test.png", "image/png", "test");
         assertTrue(attrs.getValue("src").startsWith("data:image/png;base64,"));
