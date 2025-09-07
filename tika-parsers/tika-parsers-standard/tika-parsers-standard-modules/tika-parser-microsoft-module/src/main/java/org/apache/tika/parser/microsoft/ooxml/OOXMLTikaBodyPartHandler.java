@@ -235,11 +235,17 @@ public class OOXMLTikaBodyPartHandler
     public void endParagraph() throws SAXException {
         closeStyleTags();
         if (pDepth == 1 && tableDepth == 0) {
-            xhtml.endElement(paragraphTag);
+            if (xhtml != null) {
+                xhtml.endElement(paragraphTag);
+            }
         } else if (tableCellDepth > 0 && pWithinCell > 0) {
-            xhtml.characters(NEWLINE, 0, 1);
+            if (xhtml != null) {
+                xhtml.characters(NEWLINE, 0, 1);
+            }
         } else if (tableCellDepth == 0) {
-            xhtml.characters(NEWLINE, 0, 1);
+            if (xhtml != null) {
+                xhtml.characters(NEWLINE, 0, 1);
+            }
         }
 
         if (tableCellDepth > 0) {
@@ -362,6 +368,7 @@ public class OOXMLTikaBodyPartHandler
         
         // Use contextual alt text based on surrounding sentences
         String contextualAlt = getContextualAltText();
+        
         if (contextualAlt != null && !contextualAlt.isEmpty()) {
             attr.addAttribute("", "alt", "alt", "CDATA", contextualAlt);
         } else if (picDescription != null) {
@@ -370,8 +377,10 @@ public class OOXMLTikaBodyPartHandler
             attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
         }
 
-        xhtml.startElement("img", attr);
-        xhtml.endElement("img");
+        if (xhtml != null) {
+            xhtml.startElement("img", attr);
+            xhtml.endElement("img");
+        }
     }
 
     @Override
@@ -451,8 +460,8 @@ public class OOXMLTikaBodyPartHandler
             return null;
         }
         
-        // Simple sentence boundary detection
-        String[] sentences = text.split("[.!?]+\\s+");
+        // Simple sentence boundary detection - split on sentence endings and paragraph breaks
+        String[] sentences = text.split("[.!?]+\\s+|\\n+");
         
         if (sentences.length == 0) {
             return null;
@@ -479,6 +488,18 @@ public class OOXMLTikaBodyPartHandler
         }
         
         String result = altText.toString().trim();
+        
+        // If we didn't get a good result with sentence splitting, try paragraph splitting
+        if (result.isEmpty() || sentences.length < 2) {
+            String[] paragraphs = text.split("\\s{2,}|\\n+");
+            if (paragraphs.length >= 2) {
+                String prev = paragraphs[paragraphs.length - 2].trim();
+                String curr = paragraphs[paragraphs.length - 1].trim();
+                if (!prev.isEmpty() && !curr.isEmpty()) {
+                    result = prev + " " + curr;
+                }
+            }
+        }
         
         // Limit length to avoid overly long alt text
         if (result.length() > 200) {
