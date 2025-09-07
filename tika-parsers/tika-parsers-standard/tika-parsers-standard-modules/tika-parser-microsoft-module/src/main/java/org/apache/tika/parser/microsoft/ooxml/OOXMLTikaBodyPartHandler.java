@@ -37,6 +37,9 @@ public class OOXMLTikaBodyPartHandler
     private static final String P = "p";
 
     private static final char[] NEWLINE = new char[]{'\n'};
+    
+    // Buffer size for text context tracking - keep last 2000 characters
+    private static final int TEXT_BUFFER_SIZE = 2000;
 
     private final XHTMLContentHandler xhtml;
     private final XWPFListManager listManager;
@@ -44,6 +47,9 @@ public class OOXMLTikaBodyPartHandler
     private final boolean includeMoveFromText;
     private final XWPFStylesShim styles;
     private final ParseContext context;
+    
+    // Buffer to track recent text for context
+    private final StringBuilder textBuffer = new StringBuilder(TEXT_BUFFER_SIZE);
 
     private int pDepth = 0; //paragraph depth
     private int tableDepth = 0;//table depth
@@ -96,6 +102,14 @@ public class OOXMLTikaBodyPartHandler
 
     @Override
     public void run(RunProperties runProperties, String contents) throws SAXException {
+
+        // Add text to our buffer for context tracking first
+        addToTextBuffer(contents);
+        
+        // Skip XHTML processing if handler is null (for testing)
+        if (xhtml == null) {
+            return;
+        }
 
         // True if we are currently in the named style tag:
         if (runProperties.isBold() != isBold) {
@@ -232,6 +246,9 @@ public class OOXMLTikaBodyPartHandler
             pWithinCell++;
         }
         pDepth--;
+        
+        // Add paragraph break to text buffer to help with sentence context
+        addToTextBuffer(" ");
     }
 
     @Override
@@ -342,7 +359,12 @@ public class OOXMLTikaBodyPartHandler
         // when the image data is available.
         AttributesImpl attr = new AttributesImpl();
         attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
-        if (picDescription != null) {
+        
+        // Use contextual alt text based on surrounding sentences
+        String contextualAlt = getContextualAltText();
+        if (contextualAlt != null && !contextualAlt.isEmpty()) {
+            attr.addAttribute("", "alt", "alt", "CDATA", contextualAlt);
+        } else if (picDescription != null) {
             attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
         } else if (picFileName != null) {
             attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
@@ -400,5 +422,69 @@ public class OOXMLTikaBodyPartHandler
             xhtml.characters(number);
         }
 
+    }
+    
+    /**
+     * Adds text content to the circular buffer for context tracking
+     */
+    private void addToTextBuffer(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return;
+        }
+        
+        // Add content to buffer
+        textBuffer.append(content);
+        
+        // Keep buffer size limited by removing from the beginning if too large
+        if (textBuffer.length() > TEXT_BUFFER_SIZE) {
+            int excess = textBuffer.length() - TEXT_BUFFER_SIZE;
+            textBuffer.delete(0, excess);
+        }
+    }
+    
+    /**
+     * Extracts contextual sentences around the current position for use as alt text
+     */
+    private String getContextualAltText() {
+        String text = textBuffer.toString().trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        
+        // Simple sentence boundary detection
+        String[] sentences = text.split("[.!?]+\\s+");
+        
+        if (sentences.length == 0) {
+            return null;
+        }
+        
+        // Take the last sentence(s) - if we have multiple, combine the last two
+        // This represents the context around where the image appears
+        StringBuilder altText = new StringBuilder();
+        
+        if (sentences.length >= 2) {
+            // Previous sentence + current/next sentence context
+            String prevSentence = sentences[sentences.length - 2].trim();
+            String nextSentence = sentences[sentences.length - 1].trim();
+            
+            if (!prevSentence.isEmpty() && !nextSentence.isEmpty()) {
+                altText.append(prevSentence).append(" ").append(nextSentence);
+            } else if (!prevSentence.isEmpty()) {
+                altText.append(prevSentence);
+            } else if (!nextSentence.isEmpty()) {
+                altText.append(nextSentence);
+            }
+        } else if (sentences.length == 1) {
+            altText.append(sentences[0].trim());
+        }
+        
+        String result = altText.toString().trim();
+        
+        // Limit length to avoid overly long alt text
+        if (result.length() > 200) {
+            result = result.substring(0, 197) + "...";
+        }
+        
+        return result.isEmpty() ? null : result;
     }
 }
