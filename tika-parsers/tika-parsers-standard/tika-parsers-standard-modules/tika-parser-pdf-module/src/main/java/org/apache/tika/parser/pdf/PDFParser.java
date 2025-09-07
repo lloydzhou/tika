@@ -885,6 +885,15 @@ public class PDFParser implements Parser, RenderingParser, Initializable {
     }
 
     @Field
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        defaultConfig.setConvertEmbeddedImagesToBase64(convertEmbeddedImagesToBase64);
+    }
+
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return defaultConfig.isConvertEmbeddedImagesToBase64();
+    }
+
+    @Field
     public void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
         defaultConfig.setExtractInlineImageMetadataOnly(extractInlineImageMetadataOnly);
     }
