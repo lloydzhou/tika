@@ -369,6 +369,18 @@ public class OOXMLTikaBodyPartHandler
         // Use contextual alt text based on surrounding sentences
         String contextualAlt = getContextualAltText();
         
+        // Store contextual alt text in ParseContext for use by AbstractOOXMLExtractor.handleEmbeddedFile
+        if (context != null && contextualAlt != null && !contextualAlt.isEmpty()) {
+            // Get or create the contextual alt text context
+            ContextualAltTextContext altTextContext = context.get(ContextualAltTextContext.class);
+            if (altTextContext == null) {
+                altTextContext = new ContextualAltTextContext();
+                context.set(ContextualAltTextContext.class, altTextContext);
+            }
+            // Use filename as key to store contextual alt text
+            altTextContext.setContextualAltText(picFileName, contextualAlt);
+        }
+        
         if (contextualAlt != null && !contextualAlt.isEmpty()) {
             attr.addAttribute("", "alt", "alt", "CDATA", contextualAlt);
         } else if (picDescription != null) {

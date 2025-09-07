@@ -505,7 +505,14 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
             String base64Data = java.util.Base64.getEncoder().encodeToString(imageData);
             String dataUrl = "data:" + contentType + ";base64," + base64Data;
             attr.addAttribute("", "src", "src", "CDATA", dataUrl);
-            attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            
+            // Try to get contextual alt text from ParseContext
+            String contextualAlt = getContextualAltText(resourceName);
+            if (contextualAlt != null && !contextualAlt.isEmpty()) {
+                attr.addAttribute("", "alt", "alt", "CDATA", contextualAlt);
+            } else {
+                attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            }
             
             xhtml.startElement("img", attr);
             xhtml.endElement("img");
@@ -514,11 +521,31 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
             // If anything fails, fall back to embedded: URL
             AttributesImpl attr = new AttributesImpl();
             attr.addAttribute("", "src", "src", "CDATA", "embedded:" + resourceName);
-            attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            
+            // Try to get contextual alt text for fallback as well
+            String contextualAlt = getContextualAltText(resourceName);
+            if (contextualAlt != null && !contextualAlt.isEmpty()) {
+                attr.addAttribute("", "alt", "alt", "CDATA", contextualAlt);
+            } else {
+                attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            }
             
             xhtml.startElement("img", attr);
             xhtml.endElement("img");
         }
+    }
+
+    /**
+     * Get contextual alt text from ParseContext if available
+     */
+    private String getContextualAltText(String resourceName) {
+        if (context != null && resourceName != null) {
+            ContextualAltTextContext altTextContext = context.get(ContextualAltTextContext.class);
+            if (altTextContext != null) {
+                return altTextContext.getContextualAltText(resourceName);
+            }
+        }
+        return null;
     }
 
     private void updateResourceName(PackagePart part, EmbeddedPartMetadata embeddedPartMetadata,
