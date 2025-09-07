@@ -19,65 +19,11 @@ package org.apache.tika.utils;
 import java.util.Base64;
 import java.util.Locale;
 
-import org.xml.sax.helpers.AttributesImpl;
-
-import org.apache.tika.config.ImageConfig;
-
 /**
  * Utility class for handling embedded image references in HTML output.
  * Provides methods to convert embedded: URLs to base64 data URLs when configured to do so.
  */
 public class ImageUtils {
-
-    /**
-     * Creates image attributes with appropriate src based on ImageConfig.
-     * 
-     * @param imageConfig the image configuration
-     * @param imageData the raw image bytes (may be null)
-     * @param filename the image filename (for fallback)
-     * @param mimeType the image MIME type (may be null)
-     * @param altText alt text for the image (may be null)
-     * @return AttributesImpl with img tag attributes
-     */
-    public static AttributesImpl createImageAttributes(ImageConfig imageConfig, 
-                                                     byte[] imageData, 
-                                                     String filename, 
-                                                     String mimeType, 
-                                                     String altText) {
-        AttributesImpl attr = new AttributesImpl();
-        
-        if (imageConfig != null && imageConfig.isConvertEmbeddedToBase64() && 
-            imageData != null && imageData.length > 0) {
-            
-            // Try to convert to base64 data URL
-            try {
-                String effectiveMimeType = mimeType != null ? mimeType : guessMimeTypeFromFilename(filename);
-                if (effectiveMimeType != null) {
-                    String base64Data = Base64.getEncoder().encodeToString(imageData);
-                    String dataUrl = "data:" + effectiveMimeType + ";base64," + base64Data;
-                    attr.addAttribute("", "src", "src", "CDATA", dataUrl);
-                } else {
-                    // Fallback to embedded: if no MIME type
-                    attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
-                }
-            } catch (Exception e) {
-                // Fallback to embedded: if base64 conversion fails
-                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
-            }
-        } else {
-            // Use embedded: reference (traditional behavior)
-            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
-        }
-        
-        if (altText != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", altText);
-        } else if (filename != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", filename);
-        }
-        
-        return attr;
-    }
-
     /**
      * Guess MIME type from filename extension.
      * 

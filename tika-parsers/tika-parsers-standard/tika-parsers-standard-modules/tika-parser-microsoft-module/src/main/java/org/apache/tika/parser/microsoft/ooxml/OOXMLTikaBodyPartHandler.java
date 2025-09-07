@@ -30,8 +30,6 @@ import org.apache.tika.parser.microsoft.WordExtractor;
 import org.apache.tika.parser.microsoft.ooxml.xwpf.XWPFStylesShim;
 import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.config.ImageConfig;
-import org.apache.tika.utils.ImageUtils;
 
 public class OOXMLTikaBodyPartHandler
         implements OOXMLWordAndPowerPointTextHandler.XWPFBodyContentsHandler {
@@ -92,7 +90,7 @@ public class OOXMLTikaBodyPartHandler
         this.styles = styles;
         this.listManager = listManager;
         this.includeDeletedText = parserConfig.isIncludeDeletedContent();
-        this.includeMoveFromContent = parserConfig.isIncludeMoveFromContent();
+        this.includeMoveFromText = parserConfig.isIncludeMoveFromContent();
         this.context = context;
     }
 
@@ -339,15 +337,16 @@ public class OOXMLTikaBodyPartHandler
 
     @Override
     public void embeddedPicRef(String picFileName, String picDescription) throws SAXException {
-        ImageConfig imageConfig = (context != null) ? context.get(ImageConfig.class) : null;
-        if (imageConfig == null) {
-            imageConfig = ImageConfig.DEFAULT;
+        // Since this method doesn't have access to image data, we can only create embedded: URLs
+        // The actual base64 conversion happens in AbstractOOXMLExtractor.handleEmbeddedFile()
+        // when the image data is available.
+        AttributesImpl attr = new AttributesImpl();
+        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
+        if (picDescription != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
+        } else if (picFileName != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
         }
-        
-        // Note: This method doesn't have access to image data, so we can only 
-        // create embedded: URLs here. The actual base64 conversion needs to happen
-        // elsewhere where the image data is available.
-        AttributesImpl attr = ImageUtils.createImageAttributes(imageConfig, null, picFileName, null, picDescription);
 
         xhtml.startElement("img", attr);
         xhtml.endElement("img");

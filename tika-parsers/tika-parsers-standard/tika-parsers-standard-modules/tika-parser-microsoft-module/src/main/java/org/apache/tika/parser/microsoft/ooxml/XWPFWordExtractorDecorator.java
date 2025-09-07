@@ -73,13 +73,13 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.microsoft.EMFParser;
 import org.apache.tika.parser.microsoft.FormattingUtils;
+import org.apache.tika.parser.microsoft.OfficeParserConfig;
 import org.apache.tika.parser.microsoft.WordExtractor;
 import org.apache.tika.parser.microsoft.WordExtractor.TagAndStyle;
 import org.apache.tika.parser.microsoft.ooxml.xwpf.XWPFFeatureExtractor;
 import org.apache.tika.sax.ToTextContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.tika.utils.StringUtils;
-import org.apache.tika.config.ImageConfig;
 import org.apache.tika.utils.ImageUtils;
 
 public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
@@ -457,10 +457,8 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
             if (paragraph.getDocument() != null) {
                 XWPFPictureData data = picture.getPictureData();
                 if (data != null) {
-                    ImageConfig imageConfig = getParseContext().get(ImageConfig.class);
-                    if (imageConfig == null) {
-                        imageConfig = ImageConfig.DEFAULT;
-                    }
+                    OfficeParserConfig officeConfig = getParseContext().get(OfficeParserConfig.class);
+                    boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
                     
                     byte[] imageBytes = null;
                     String extension = null;
@@ -475,7 +473,7 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
                     String filename = data.getFileName() != null ? data.getFileName() : ("image." + (extension != null ? extension : "png"));
                     String altText = picture.getDescription();
                     
-                    AttributesImpl attr = ImageUtils.createImageAttributes(imageConfig, imageBytes, filename, mimeType, altText);
+                    AttributesImpl attr = createImageAttributes(convertToBase64, imageBytes, filename, mimeType, altText);
 
                     xhtml.startElement("img", attr);
                     xhtml.endElement("img");
@@ -590,6 +588,53 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
             }
         }
 
+    }
+
+    /**
+     * Creates image attributes with appropriate src based on whether base64 conversion is enabled.
+     * 
+     * @param convertToBase64 whether to convert to base64 data URLs
+     * @param imageData the raw image bytes (may be null)
+     * @param filename the image filename (for fallback)
+     * @param mimeType the image MIME type (may be null)
+     * @param altText alt text for the image (may be null)
+     * @return AttributesImpl with img tag attributes
+     */
+    private AttributesImpl createImageAttributes(boolean convertToBase64,
+                                                 byte[] imageData, 
+                                                 String filename, 
+                                                 String mimeType, 
+                                                 String altText) {
+        AttributesImpl attr = new AttributesImpl();
+        
+        if (convertToBase64 && imageData != null && imageData.length > 0) {
+            // Try to convert to base64 data URL
+            try {
+                String effectiveMimeType = mimeType != null ? mimeType : ImageUtils.guessMimeTypeFromFilename(filename);
+                if (effectiveMimeType != null) {
+                    String base64Data = java.util.Base64.getEncoder().encodeToString(imageData);
+                    String dataUrl = "data:" + effectiveMimeType + ";base64," + base64Data;
+                    attr.addAttribute("", "src", "src", "CDATA", dataUrl);
+                } else {
+                    // Fallback to embedded: if no MIME type
+                    attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+                }
+            } catch (Exception e) {
+                // Fallback to embedded: if base64 conversion fails
+                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+            }
+        } else {
+            // Use embedded: reference (traditional behavior)
+            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+        }
+        
+        if (altText != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", altText);
+        } else if (filename != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", filename);
+        }
+        
+        return attr;
     }
 
 }

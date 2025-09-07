@@ -181,4 +181,13 @@ public abstract class AbstractOfficeParser implements Parser {
         return defaultOfficeParserConfig.isIncludeHeadersAndFooters();
     }
 
+    @Field
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        defaultOfficeParserConfig.setConvertEmbeddedImagesToBase64(convertEmbeddedImagesToBase64);
+    }
+
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return defaultOfficeParserConfig.isConvertEmbeddedImagesToBase64();
+    }
+
 }

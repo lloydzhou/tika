@@ -96,6 +96,9 @@ public class PDFParserConfig implements Serializable {
     //a pdf file) should only be extracted once.
     private boolean extractUniqueInlineImagesOnly = true;
 
+    //True if embedded: image URLs should be converted to base64 data URLs
+    private boolean convertEmbeddedImagesToBase64 = false;
+
     //Should the PDFParser _try_ to extract marked content/structure tags (backoff to regular
     //text extraction if the given PDF doesn't have marked content)
     private boolean extractMarkedContent = false;
@@ -367,6 +370,28 @@ public class PDFParserConfig implements Serializable {
     public void setExtractUniqueInlineImagesOnly(boolean extractUniqueInlineImagesOnly) {
         this.extractUniqueInlineImagesOnly = extractUniqueInlineImagesOnly;
         userConfigured.add("extractUniqueInlineImagesOnly");
+    }
+
+    /**
+     * Whether to convert embedded: image URLs to base64 data URLs.
+     * Default is false (use embedded: URLs).
+     *
+     * @return true if embedded: URLs should be converted to base64 data URLs
+     */
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return convertEmbeddedImagesToBase64;
+    }
+
+    /**
+     * Set whether to convert embedded: image URLs to base64 data URLs.
+     * When set to true, inline images will be converted to data: URLs with base64 encoding.
+     * When set to false (default), traditional embedded: URLs will be used.
+     *
+     * @param convertEmbeddedImagesToBase64 true to convert to base64, false to use embedded: URLs
+     */
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        this.convertEmbeddedImagesToBase64 = convertEmbeddedImagesToBase64;
+        userConfigured.add("convertEmbeddedImagesToBase64");
     }
 
     /**
