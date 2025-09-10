@@ -30,11 +30,11 @@ import org.apache.pdfbox.text.TextPosition;
  */
 class TableDetector {
     
-    private static final float MIN_COLUMN_WIDTH = 20f;
+    private static final float MIN_COLUMN_WIDTH = 10f;  // Reduced from 20f for narrower columns
     private static final float MIN_ROW_HEIGHT = 8f;
     private static final int MIN_ROWS = 2;
     private static final int MIN_COLUMNS = 2;
-    private static final float ALIGNMENT_TOLERANCE = 2f;
+    private static final float ALIGNMENT_TOLERANCE = 5f; // Increased from 2f for better alignment flexibility
     
     /**
      * Represents a detected table structure.
@@ -134,6 +134,11 @@ class TableDetector {
         for (TextPosition pos : textPositions) {
             float y = pos.getY();
             
+            // Skip positions with null or empty text
+            if (pos.getUnicode() == null || pos.getUnicode().trim().isEmpty()) {
+                continue;
+            }
+            
             // Find existing row with similar Y coordinate
             Float matchingY = null;
             for (Float existingY : rowGroups.keySet()) {
@@ -162,6 +167,11 @@ class TableDetector {
             for (TextPosition pos : row) {
                 float x = pos.getX();
                 
+                // Skip positions with null or empty text
+                if (pos.getUnicode() == null || pos.getUnicode().trim().isEmpty()) {
+                    continue;
+                }
+                
                 // Find existing column with similar X coordinate
                 Float matchingX = null;
                 for (Float existingX : columnCounts.keySet()) {
@@ -180,8 +190,8 @@ class TableDetector {
         }
         
         // Filter columns that appear in multiple rows (table-like alignment)
-        // Require more strict alignment for table detection
-        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.6)); // At least 60% of rows
+        // Require less strict alignment for table detection - reduced from 60% to 40%
+        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.4)); // At least 40% of rows
         List<Float> columnPositions = new ArrayList<>();
         
         for (Map.Entry<Float, Integer> entry : columnCounts.entrySet()) {
@@ -236,7 +246,8 @@ class TableDetector {
                 
                 for (TextPosition pos : rowPositions) {
                     float distance = Math.abs(pos.getX() - colX);
-                    if (distance < minDistance && distance <= ALIGNMENT_TOLERANCE * 2) {
+                    // Increased tolerance for matching text to columns
+                    if (distance < minDistance && distance <= ALIGNMENT_TOLERANCE * 3) {
                         minDistance = distance;
                         closestPos = pos;
                     }

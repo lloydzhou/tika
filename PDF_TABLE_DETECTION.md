@@ -1,0 +1,196 @@
+# PDF Table Detection in Apache Tika
+
+This document explains how to use Apache Tika's PDF table detection feature, which automatically identifies and extracts tabular data from PDF documents.
+
+## Overview
+
+The PDF table detection feature uses PDFBox's text positioning information to identify tabular structures in PDF documents. It analyzes the spatial positioning of text elements to detect rows and columns, then outputs the detected tables as HTML `<table>` elements.
+
+## Configuration
+
+### Method 1: XML Configuration (tika-config.xml)
+
+Create a `tika-config.xml` file:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+  <parsers>
+    <parser class="org.apache.tika.parser.pdf.PDFParser">
+      <params>
+        <!-- Enable table detection (default: true) -->
+        <param name="detectTables" type="bool">true</param>
+        
+        <!-- Other useful PDF parser options -->
+        <param name="extractInlineImages" type="bool">false</param>
+        <param name="extractUniqueInlineImagesOnly" type="bool">true</param>
+        <param name="sortByPosition" type="bool">false</param>
+        <param name="enableAutoSpace" type="bool">true</param>
+        <param name="suppressDuplicateOverlappingText" type="bool">false</param>
+        <param name="extractAnnotationText" type="bool">true</param>
+        <param name="extractAcroFormContent" type="bool">true</param>
+        <param name="extractBookmarksText" type="bool">true</param>
+      </params>
+    </parser>
+  </parsers>
+</properties>
+```
+
+Load the configuration:
+
+```java
+TikaConfig config = new TikaConfig(Paths.get("tika-config.xml"));
+Parser parser = config.getParser();
+```
+
+### Method 2: Properties Configuration (tika.properties)
+
+Create a `tika.properties` file:
+
+```properties
+# Enable table detection in PDF parser (default is true)
+pdf.detectTables=true
+
+# Other useful PDF parser options  
+pdf.extractInlineImages=false
+pdf.enableAutoSpace=true
+pdf.extractAnnotationText=true
+```
+
+### Method 3: Programmatic Configuration
+
+```java
+// Create PDF parser configuration
+PDFParserConfig config = new PDFParserConfig();
+
+// Enable table detection (enabled by default)
+config.setDetectTables(true);
+
+// Configure other useful options
+config.setEnableAutoSpace(true);
+config.setExtractAnnotationText(true);
+
+// Use the configuration
+ParseContext context = new ParseContext();
+context.set(PDFParserConfig.class, config);
+
+// Parse the PDF
+PDFParser parser = new PDFParser();
+parser.parse(inputStream, handler, metadata, context);
+```
+
+## Usage Example
+
+```java
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.parser.pdf.PDFParserConfig;
+import org.apache.tika.sax.BodyContentHandler;
+
+// Configure table detection
+PDFParserConfig config = new PDFParserConfig();
+config.setDetectTables(true);
+
+// Set up parsing components
+Metadata metadata = new Metadata();
+BodyContentHandler handler = new BodyContentHandler();
+ParseContext context = new ParseContext();
+context.set(PDFParserConfig.class, config);
+
+// Parse the PDF with table detection
+PDFParser parser = new PDFParser();
+try (InputStream input = new FileInputStream("document.pdf")) {
+    parser.parse(input, handler, metadata, context);
+    
+    // Get the extracted content with HTML tables
+    String content = handler.toString();
+    System.out.println(content);
+}
+```
+
+## Output Format
+
+Detected tables are output as HTML table elements:
+
+```html
+<table>
+  <tr>
+    <td>Name</td>
+    <td>Age</td>
+    <td>Country</td>
+  </tr>
+  <tr>
+    <td>John</td>
+    <td>25</td>
+    <td>USA</td>
+  </tr>
+  <tr>
+    <td>Mary</td>
+    <td>30</td>
+    <td>UK</td>
+  </tr>
+</table>
+```
+
+## Algorithm Parameters
+
+The table detection algorithm uses several parameters that can be understood but not directly configured:
+
+- **Minimum Column Width**: 10 pixels (columns closer together may not be detected)
+- **Minimum Row Height**: 8 pixels 
+- **Alignment Tolerance**: 5 pixels (text positions within this tolerance are considered aligned)
+- **Minimum Columns**: 2 (at least 2 columns required for table detection)
+- **Minimum Rows**: 2 (at least 2 rows required for table detection)
+- **Column Appearance Rate**: 40% (columns must appear in at least 40% of rows)
+
+## Best Practices
+
+1. **Enable Auto Space**: Set `enableAutoSpace=true` for better text extraction
+2. **Handle Empty Cells**: The algorithm handles sparse data where some cells may be empty
+3. **Multiple Tables**: The algorithm can detect multiple tables on the same page
+4. **Performance**: Table detection has minimal performance impact on PDF parsing
+
+## Troubleshooting
+
+### Tables Not Detected
+
+If tables aren't being detected:
+
+1. Check that `detectTables=true` is set in your configuration
+2. Verify the table has regular column alignment (within 5 pixels)
+3. Ensure columns are at least 10 pixels apart
+4. Check that the table has at least 2 rows and 2 columns
+5. Verify that columns appear consistently across at least 40% of rows
+
+### Debug Information
+
+To debug table detection issues, you can:
+
+1. Enable font name extraction: `extractFontNames=true`
+2. Enable marked content extraction: `extractMarkedContent=true`
+3. Check the raw text positions in the PDF
+
+### Common Issues
+
+- **Scanned PDFs**: Table detection only works on PDFs with selectable text, not scanned images
+- **Complex Layouts**: Tables with merged cells or irregular layouts may not be detected
+- **Small Tables**: Very small tables (less than 2x2) are not detected
+- **Rotated Tables**: Tables that are rotated may not be detected correctly
+
+## Integration with Tika Server
+
+When using Tika Server, you can pass configuration through HTTP headers or by providing a tika-config.xml file to the server.
+
+Example curl command:
+```bash
+curl -X POST \
+  -H "Content-Type: application/pdf" \
+  -H "X-Tika-PDFdetectTables: true" \
+  --data-binary @document.pdf \
+  http://localhost:9998/tika
+```
+
+## Version Compatibility
+
+This table detection feature is available in Apache Tika 4.0.0 and later versions.
