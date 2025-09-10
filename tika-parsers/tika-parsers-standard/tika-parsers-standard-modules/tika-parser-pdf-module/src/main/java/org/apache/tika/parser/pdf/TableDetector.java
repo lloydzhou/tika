@@ -134,6 +134,11 @@ class TableDetector {
         for (TextPosition pos : textPositions) {
             float y = pos.getY();
             
+            // Skip positions with null or empty text
+            if (pos.getUnicode() == null || pos.getUnicode().trim().isEmpty()) {
+                continue;
+            }
+            
             // Find existing row with similar Y coordinate
             Float matchingY = null;
             for (Float existingY : rowGroups.keySet()) {
@@ -161,6 +166,11 @@ class TableDetector {
         for (List<TextPosition> row : rowGroups.values()) {
             for (TextPosition pos : row) {
                 float x = pos.getX();
+                
+                // Skip positions with null or empty text
+                if (pos.getUnicode() == null || pos.getUnicode().trim().isEmpty()) {
+                    continue;
+                }
                 
                 // Find existing column with similar X coordinate
                 Float matchingX = null;

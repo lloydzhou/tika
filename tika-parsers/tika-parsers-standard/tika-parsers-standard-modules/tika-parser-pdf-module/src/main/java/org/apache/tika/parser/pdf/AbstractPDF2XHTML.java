@@ -1550,7 +1550,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         super.processTextPosition(text);
         
         // Collect text positions for table detection
-        if (tableDetectionEnabled && text != null) {
+        if (tableDetectionEnabled && text != null && text.getUnicode() != null && !text.getUnicode().trim().isEmpty()) {
             currentPageTextPositions.add(text);
         }
     }
