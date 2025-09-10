@@ -894,6 +894,15 @@ public class PDFParser implements Parser, RenderingParser, Initializable {
     }
 
     @Field
+    public void setDetectTables(boolean detectTables) {
+        defaultConfig.setDetectTables(detectTables);
+    }
+
+    public boolean isDetectTables() {
+        return defaultConfig.isDetectTables();
+    }
+
+    @Field
     public void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
         defaultConfig.setExtractInlineImageMetadataOnly(extractInlineImageMetadataOnly);
     }

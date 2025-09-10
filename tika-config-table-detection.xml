@@ -8,9 +8,10 @@
       <params>
         <!-- Enable table detection (default: true) -->
         <param name="detectTables" type="bool">true</param>
+        <param name="extractMarkedContent" type="bool">true</param>
         
         <!-- Other useful PDF parser options -->
-        <param name="extractInlineImages" type="bool">false</param>
+        <param name="extractInlineImages" type="bool">true</param>
         <param name="extractUniqueInlineImagesOnly" type="bool">true</param>
         <param name="sortByPosition" type="bool">false</param>
         <param name="enableAutoSpace" type="bool">true</param>
@@ -19,7 +20,6 @@
         <param name="extractAcroFormContent" type="bool">true</param>
         <param name="extractBookmarksText" type="bool">true</param>
         <param name="extractFontNames" type="bool">false</param>
-        <param name="extractMarkedContent" type="bool">false</param>
         <param name="extractXMPMetadata" type="bool">false</param>
       </params>
     </parser>
