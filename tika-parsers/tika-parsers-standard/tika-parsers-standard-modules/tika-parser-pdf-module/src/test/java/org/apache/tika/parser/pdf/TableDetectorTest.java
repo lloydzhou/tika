@@ -125,6 +125,120 @@ public class TableDetectorTest {
         
         assertTrue(tables.isEmpty(), "Should not detect tables in empty input");
     }
+    
+    @Test
+    public void testFalsePositiveHeaderFooterDetection() {
+        // Test case for the reported issue: when headers/footers have table-like layouts
+        // where the number of columns roughly equals the number of characters per row,
+        // it should not be detected as a table
+        List<TextPosition> textPositions = new ArrayList<>();
+        
+        // Create a more realistic header-like layout that would trigger false positive
+        // Simulate a header with multiple elements that align in columns but are actually 
+        // just formatted text (like "Page 1", "Chapter Title", "Date", etc.)
+        float y1 = 750; // Header row 1
+        float y2 = 730; // Header row 2 (slightly below)
+        
+        // Create pattern that looks like a table but is actually just header/footer
+        // Each "word" becomes a separate column, creating high column-to-content ratio
+        String[] row1Words = {"P", "a", "g", "e", "1", "o", "f", "1", "0", "T", "i", "t", "l", "e"};
+        String[] row2Words = {"C", "o", "m", "p", "a", "n", "y", "N", "a", "m", "e", "2", "0", "2", "3"};
+        
+        float startX = 50;
+        float colSpacing = 15; // Small spacing between "columns"
+        
+        // Add first row - each character in its own position (simulating over-segmented text)
+        for (int i = 0; i < row1Words.length; i++) {
+            float x = startX + (i * colSpacing);
+            textPositions.add(createTestTextPosition(row1Words[i], x, y1, 8, 10));
+        }
+        
+        // Add second row with similar pattern
+        for (int i = 0; i < row2Words.length; i++) {
+            float x = startX + (i * colSpacing);
+            textPositions.add(createTestTextPosition(row2Words[i], x, y2, 8, 10));
+        }
+        
+        List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+        
+        System.out.println("False positive test - Tables detected: " + tables.size());
+        if (!tables.isEmpty()) {
+            TableDetector.TableStructure table = tables.get(0);
+            System.out.println("  Rows: " + table.getRows().size());
+            System.out.println("  Columns in first row: " + table.getRows().get(0).getCells().size());
+            
+            // Count total characters in all rows
+            int totalChars = 0;
+            int totalCells = 0;
+            for (TableDetector.TableRow row : table.getRows()) {
+                totalCells += row.getCells().size();
+                for (TableDetector.TableCell cell : row.getCells()) {
+                    if (cell.getText() != null && !cell.getText().trim().isEmpty()) {
+                        totalChars += cell.getText().length();
+                    }
+                }
+            }
+            System.out.println("  Total characters: " + totalChars);
+            System.out.println("  Total cells: " + totalCells);
+            System.out.println("  Column-to-character ratio: " + 
+                (float)totalCells / Math.max(1, totalChars));
+        }
+        
+        // This should fail with current implementation (detecting false positive)
+        // After fix, this should pass (no false positive detected)
+        assertTrue(tables.isEmpty(), 
+            "Should not detect header/footer text as table when column count approximates character count");
+    }
+    
+    @Test
+    public void testValidTableStillDetected() {
+        // Make sure we didn't break detection of valid tables
+        List<TextPosition> textPositions = new ArrayList<>();
+        
+        // Create a proper table with meaningful content (low column-to-character ratio)
+        // Row 1: Headers
+        textPositions.add(createTestTextPosition("Employee", 10, 100, 60, 10));
+        textPositions.add(createTestTextPosition("Department", 80, 100, 80, 10));
+        textPositions.add(createTestTextPosition("Salary", 170, 100, 50, 10));
+        
+        // Row 2: Data
+        textPositions.add(createTestTextPosition("John Smith", 10, 80, 60, 10));
+        textPositions.add(createTestTextPosition("Engineering", 80, 80, 80, 10));
+        textPositions.add(createTestTextPosition("$75000", 170, 80, 50, 10));
+        
+        // Row 3: Data  
+        textPositions.add(createTestTextPosition("Jane Doe", 10, 60, 60, 10));
+        textPositions.add(createTestTextPosition("Marketing", 80, 60, 80, 10));
+        textPositions.add(createTestTextPosition("$65000", 170, 60, 50, 10));
+        
+        List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+        
+        System.out.println("Valid table test - Tables detected: " + tables.size());
+        if (!tables.isEmpty()) {
+            TableDetector.TableStructure table = tables.get(0);
+            System.out.println("  Rows: " + table.getRows().size());
+            System.out.println("  Columns: " + table.getRows().get(0).getCells().size());
+            
+            // Count total characters and cells
+            int totalChars = 0;
+            int totalCells = 0;
+            for (TableDetector.TableRow row : table.getRows()) {
+                totalCells += row.getCells().size();
+                for (TableDetector.TableCell cell : row.getCells()) {
+                    if (cell.getText() != null && !cell.getText().trim().isEmpty()) {
+                        totalChars += cell.getText().length();
+                    }
+                }
+            }
+            System.out.println("  Total characters: " + totalChars);
+            System.out.println("  Column-to-character ratio: " + 
+                (float)totalCells / Math.max(1, totalChars));
+        }
+        
+        assertFalse(tables.isEmpty(), "Valid table with meaningful content should still be detected");
+        assertTrue(tables.get(0).getRows().size() >= 3, "Should detect all 3 rows");
+        assertTrue(tables.get(0).getRows().get(0).getCells().size() == 3, "Should detect 3 columns");
+    }
 
     private List<TextPosition> createSimpleTableLayout() {
         List<TextPosition> positions = new ArrayList<>();
