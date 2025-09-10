@@ -87,6 +87,9 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
 
     //this stores state as we recurse through the structure tag tree
     private State state = new State();
+    
+    // Map to collect text positions by page for table detection
+    private Map<PDPage, List<TextPosition>> pageTextPositions;
 
     private PDFMarkedContent2XHTML(PDDocument document, ContentHandler handler,
                                    ParseContext context, Metadata metadata, PDFParserConfig config)
@@ -260,6 +263,27 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         }
 
     }
+    
+    @Override
+    protected void endPage(PDPage page) throws IOException {
+        // Detect and render tables at end of page if table detection is enabled
+        if (tableDetectionEnabled && pageTextPositions != null && pageTextPositions.containsKey(page)) {
+            List<TextPosition> textPositions = pageTextPositions.get(page);
+            if (!textPositions.isEmpty()) {
+                try {
+                    List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+                    for (TableDetector.TableStructure table : tables) {
+                        renderTable(table);
+                    }
+                } catch (SAXException e) {
+                    throw new IOException("Unable to render detected tables", e);
+                }
+            }
+        }
+        
+        super.endPage(page);
+
+    }
 
     private void recurse(COSBase kids, ObjectRef currentPageRef, int depth,
                          Map<MCID, String> paragraphs, Map<String, HtmlTag> roleMap)
@@ -415,7 +439,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         Map<MCID, String> paragraphs = new HashMap<>();
         
         // Map to collect text positions by page for table detection
-        Map<PDPage, List<TextPosition>> pageTextPositions = new HashMap<>();
+        pageTextPositions = new HashMap<>();
         
         for (PDPage page : pageTree) {
             ObjectRef pageRef = pageRefs.get(pageCount - 1);
@@ -490,33 +514,8 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
             pageCount++;
         }
         
-        // Detect and render tables for each page if table detection is enabled
-        if (tableDetectionEnabled) {
-            try {
-                detectAndRenderTablesFromMarkedContent(pageTextPositions);
-            } catch (SAXException e) {
-                throw new IOException("Unable to render detected tables from marked content", e);
-            }
-        }
-        
         return paragraphs;
     }
-    
-    /**
-     * Detect and render tables from collected text positions during marked content processing
-     */
-    private void detectAndRenderTablesFromMarkedContent(Map<PDPage, List<TextPosition>> pageTextPositions) throws SAXException {
-        for (Map.Entry<PDPage, List<TextPosition>> entry : pageTextPositions.entrySet()) {
-            List<TextPosition> textPositions = entry.getValue();
-            if (!textPositions.isEmpty()) {
-                List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
-                for (TableDetector.TableStructure table : tables) {
-                    renderTable(table);
-                }
-            }
-        }
-    }
-
     private static class State {
         Set<MCID> processedMCIDs = new HashSet<>();
         boolean inLink = false;
