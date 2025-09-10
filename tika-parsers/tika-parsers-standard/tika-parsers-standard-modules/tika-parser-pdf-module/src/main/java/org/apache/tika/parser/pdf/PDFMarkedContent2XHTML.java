@@ -196,8 +196,6 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
 
     @Override
     protected void processPages(PDPageTree pageTree) throws IOException {
-        // Start with proper document structure
-        startDocument(pdDocument);
 
         //this is a 0-indexed list of object refs for each page
         //we need this to map the mcids later...
@@ -264,8 +262,6 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
             endPage(page);
         }
 
-        // End with proper document structure 
-        endDocument(pdDocument);
     }
     
     @Override
