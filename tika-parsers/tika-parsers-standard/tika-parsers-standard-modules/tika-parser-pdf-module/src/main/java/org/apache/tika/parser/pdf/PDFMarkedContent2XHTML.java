@@ -196,6 +196,8 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
 
     @Override
     protected void processPages(PDPageTree pageTree) throws IOException {
+        // Start with proper document structure
+        startDocument(pdDocument);
 
         //this is a 0-indexed list of object refs for each page
         //we need this to map the mcids later...
@@ -262,27 +264,33 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
             endPage(page);
         }
 
+        // End with proper document structure 
+        endDocument(pdDocument);
     }
     
     @Override
     protected void endPage(PDPage page) throws IOException {
-        // Detect and render tables at end of page if table detection is enabled
-        if (tableDetectionEnabled && pageTextPositions != null && pageTextPositions.containsKey(page)) {
-            List<TextPosition> textPositions = pageTextPositions.get(page);
-            if (!textPositions.isEmpty()) {
-                try {
-                    List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
-                    for (TableDetector.TableStructure table : tables) {
-                        renderTable(table);
+        try {
+            // First handle table detection if enabled
+            if (tableDetectionEnabled && pageTextPositions != null && pageTextPositions.containsKey(page)) {
+                List<TextPosition> textPositions = pageTextPositions.get(page);
+                if (!textPositions.isEmpty()) {
+                    try {
+                        List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+                        for (TableDetector.TableStructure table : tables) {
+                            renderTable(table);
+                        }
+                    } catch (SAXException e) {
+                        throw new IOException("Unable to render detected tables", e);
                     }
-                } catch (SAXException e) {
-                    throw new IOException("Unable to render detected tables", e);
                 }
             }
+            
+            // Then call the parent endPage which handles images and other processing
+            super.endPage(page);
+        } catch (IOException e) {
+            handleCatchableIOE(e);
         }
-        
-        super.endPage(page);
-
     }
 
     private void recurse(COSBase kids, ObjectRef currentPageRef, int depth,
