@@ -35,6 +35,7 @@ class TableDetector {
     private static final int MIN_ROWS = 2;
     private static final int MIN_COLUMNS = 2;
     private static final float ALIGNMENT_TOLERANCE = 5f; // Increased from 2f for better alignment flexibility
+    private static final float MAX_COLUMN_TO_CHAR_RATIO = 0.7f; // Maximum ratio of columns to characters to avoid false positives
     
     /**
      * Represents a detected table structure.
@@ -293,10 +294,66 @@ class TableDetector {
             if (hasValidGrid) {
                 float tableWidth = maxX - minX + MIN_COLUMN_WIDTH;
                 float tableHeight = maxY - minY + MIN_ROW_HEIGHT;
-                return new TableStructure(rows, minX, minY, tableWidth, tableHeight);
+                TableStructure table = new TableStructure(rows, minX, minY, tableWidth, tableHeight);
+                
+                // Additional validation to prevent false positives (header/footer detection)
+                if (isLikelyTable(table)) {
+                    return table;
+                } else {
+                    return null; // Reject this as a false positive
+                }
             }
         }
         
         return null;
+    }
+    
+    /**
+     * Validate that a detected table structure is likely a real table and not 
+     * a false positive (such as header/footer text laid out in a grid pattern).
+     */
+    private static boolean isLikelyTable(TableStructure table) {
+        if (table.getRows().isEmpty()) {
+            return false;
+        }
+        
+        // Calculate column-to-character ratio to detect false positives
+        int totalCells = 0;
+        int totalCharacters = 0;
+        int nonEmptyColumns = 0;
+        
+        for (TableRow row : table.getRows()) {
+            totalCells += row.getCells().size();
+            
+            for (TableCell cell : row.getCells()) {
+                String cellText = cell.getText();
+                if (cellText != null && !cellText.trim().isEmpty()) {
+                    totalCharacters += cellText.length();
+                    nonEmptyColumns++;
+                }
+            }
+        }
+        
+        // If we have very few characters, don't apply the ratio check strictly
+        if (totalCharacters < 10) {
+            return true;
+        }
+        
+        // Calculate the ratio of total cells to total characters
+        float columnToCharRatio = (float) totalCells / Math.max(1, totalCharacters);
+        
+        // If the ratio is too high (many columns relative to content), 
+        // it's likely a false positive (header/footer with character-per-column layout)
+        if (columnToCharRatio > MAX_COLUMN_TO_CHAR_RATIO) {
+            return false;
+        }
+        
+        // Additional check: if average characters per cell is too low, likely false positive
+        float avgCharsPerCell = (float) totalCharacters / Math.max(1, nonEmptyColumns);
+        if (avgCharsPerCell < 1.5f && columnToCharRatio > 0.5f) {
+            return false;
+        }
+        
+        return true;
     }
 }
