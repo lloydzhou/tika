@@ -6,6 +6,8 @@ This document explains how to use Apache Tika's PDF table detection feature, whi
 
 The PDF table detection feature uses PDFBox's text positioning information to identify tabular structures in PDF documents. It analyzes the spatial positioning of text elements to detect rows and columns, then outputs the detected tables as HTML `<table>` elements.
 
+**Note**: As of version 4.0.0, table detection works correctly with both regular PDF parsing (`extractMarkedContent=false`) and marked content extraction (`extractMarkedContent=true`). Previous versions had an issue where table detection only worked when `extractMarkedContent=true` was set.
+
 ## Configuration
 
 ### Method 1: XML Configuration (tika-config.xml)
@@ -20,6 +22,9 @@ Create a `tika-config.xml` file:
       <params>
         <!-- Enable table detection (default: true) -->
         <param name="detectTables" type="bool">true</param>
+        
+        <!-- Optional: Enable marked content extraction (default: false) -->
+        <param name="extractMarkedContent" type="bool">false</param>
         
         <!-- Other useful PDF parser options -->
         <param name="extractInlineImages" type="bool">false</param>
@@ -51,6 +56,9 @@ Create a `tika.properties` file:
 # Enable table detection in PDF parser (default is true)
 pdf.detectTables=true
 
+# Optional: Enable marked content extraction (default is false)
+pdf.extractMarkedContent=false
+
 # Other useful PDF parser options  
 pdf.extractInlineImages=false
 pdf.enableAutoSpace=true
@@ -66,6 +74,9 @@ PDFParserConfig config = new PDFParserConfig();
 // Enable table detection (enabled by default)
 config.setDetectTables(true);
 
+// Optional: Enable marked content extraction
+config.setExtractMarkedContent(false);
+
 // Configure other useful options
 config.setEnableAutoSpace(true);
 config.setExtractAnnotationText(true);
@@ -78,6 +89,24 @@ context.set(PDFParserConfig.class, config);
 PDFParser parser = new PDFParser();
 parser.parse(inputStream, handler, metadata, context);
 ```
+
+## Table Detection with Marked Content
+
+Table detection now works correctly with both parsing modes:
+
+### Regular Parsing (extractMarkedContent=false)
+- Uses standard PDF text extraction
+- Table detection works through text position analysis
+- Suitable for most PDF documents
+- Better performance for documents without marked content structure
+
+### Marked Content Parsing (extractMarkedContent=true)  
+- Extracts text using PDF marked content structure tags
+- Table detection works alongside marked content extraction
+- Better for PDFs with proper accessibility markup
+- Preserves structural information from the PDF
+
+Both modes can be used simultaneously with image extraction without conflicts.
 
 ## Usage Example
 

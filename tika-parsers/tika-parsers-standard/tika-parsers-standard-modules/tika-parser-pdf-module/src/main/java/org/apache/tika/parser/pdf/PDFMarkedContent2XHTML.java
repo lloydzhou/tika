@@ -413,9 +413,18 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
     private Map<MCID, String> loadTextByMCID(PDPageTree pageTree, List<ObjectRef> pageRefs) throws IOException {
         int pageCount = 1;
         Map<MCID, String> paragraphs = new HashMap<>();
+        
+        // Map to collect text positions by page for table detection
+        Map<PDPage, List<TextPosition>> pageTextPositions = new HashMap<>();
+        
         for (PDPage page : pageTree) {
             ObjectRef pageRef = pageRefs.get(pageCount - 1);
             PDFMarkedContentExtractor ex = new PDFMarkedContentExtractor();
+            
+            // Initialize text position collection for this page
+            List<TextPosition> currentPagePositions = new ArrayList<>();
+            pageTextPositions.put(page, currentPagePositions);
+            
             try {
                 ex.processPage(page);
             } catch (IOException e) {
@@ -434,9 +443,14 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                 //TODO: sort text positions? Figure out when to add/remove a newline and/or space?
                 for (Object o : objects) {
                     if (o instanceof TextPosition) {
-                        String unicode = ((TextPosition) o).getUnicode();
+                        TextPosition textPos = (TextPosition) o;
+                        String unicode = textPos.getUnicode();
                         if (unicode != null) {
                             sb.append(unicode);
+                            // Collect text positions for table detection if enabled
+                            if (tableDetectionEnabled && unicode.trim().length() > 0) {
+                                currentPagePositions.add(textPos);
+                            }
                         }
                     }
                     /*
@@ -475,7 +489,32 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
             }
             pageCount++;
         }
+        
+        // Detect and render tables for each page if table detection is enabled
+        if (tableDetectionEnabled) {
+            try {
+                detectAndRenderTablesFromMarkedContent(pageTextPositions);
+            } catch (SAXException e) {
+                throw new IOException("Unable to render detected tables from marked content", e);
+            }
+        }
+        
         return paragraphs;
+    }
+    
+    /**
+     * Detect and render tables from collected text positions during marked content processing
+     */
+    private void detectAndRenderTablesFromMarkedContent(Map<PDPage, List<TextPosition>> pageTextPositions) throws SAXException {
+        for (Map.Entry<PDPage, List<TextPosition>> entry : pageTextPositions.entrySet()) {
+            List<TextPosition> textPositions = entry.getValue();
+            if (!textPositions.isEmpty()) {
+                List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+                for (TableDetector.TableStructure table : tables) {
+                    renderTable(table);
+                }
+            }
+        }
     }
 
     private static class State {
