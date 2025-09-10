@@ -180,7 +180,8 @@ class TableDetector {
         }
         
         // Filter columns that appear in multiple rows (table-like alignment)
-        int minAppearances = Math.max(2, rowGroups.size() / 2);
+        // Require more strict alignment for table detection
+        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.6)); // At least 60% of rows
         List<Float> columnPositions = new ArrayList<>();
         
         for (Map.Entry<Float, Integer> entry : columnCounts.entrySet()) {
@@ -190,6 +191,18 @@ class TableDetector {
         }
         
         Collections.sort(columnPositions);
+        
+        // Additional check: ensure columns are reasonably spaced
+        if (columnPositions.size() >= MIN_COLUMNS) {
+            for (int i = 1; i < columnPositions.size(); i++) {
+                float spacing = columnPositions.get(i) - columnPositions.get(i - 1);
+                if (spacing < MIN_COLUMN_WIDTH) {
+                    // Columns too close together, likely not a table
+                    return new ArrayList<>();
+                }
+            }
+        }
+        
         return columnPositions;
     }
     
@@ -254,9 +267,23 @@ class TableDetector {
         }
         
         if (rows.size() >= MIN_ROWS && !columnPositions.isEmpty()) {
-            float tableWidth = maxX - minX + MIN_COLUMN_WIDTH;
-            float tableHeight = maxY - minY + MIN_ROW_HEIGHT;
-            return new TableStructure(rows, minX, minY, tableWidth, tableHeight);
+            // Additional validation: check if we have a proper grid structure
+            boolean hasValidGrid = true;
+            int expectedColumns = columnPositions.size();
+            
+            for (TableRow row : rows) {
+                // Allow some flexibility in number of cells per row
+                if (row.getCells().size() < expectedColumns / 2) {
+                    hasValidGrid = false;
+                    break;
+                }
+            }
+            
+            if (hasValidGrid) {
+                float tableWidth = maxX - minX + MIN_COLUMN_WIDTH;
+                float tableHeight = maxY - minY + MIN_ROW_HEIGHT;
+                return new TableStructure(rows, minX, minY, tableWidth, tableHeight);
+            }
         }
         
         return null;

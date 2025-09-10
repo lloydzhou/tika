@@ -201,7 +201,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
     
     // Table detection support
     private List<TextPosition> currentPageTextPositions = new ArrayList<>();
-    private boolean tableDetectionEnabled = true;
+    private boolean tableDetectionEnabled;
 
     AbstractPDF2XHTML(PDDocument pdDocument, ContentHandler handler, ParseContext context,
                       Metadata metadata, PDFParserConfig config) throws IOException {
@@ -210,6 +210,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         this.context = context;
         this.metadata = metadata;
         this.config = config;
+        this.tableDetectionEnabled = config.isDetectTables();
         embeddedDocumentExtractor = EmbeddedDocumentUtil.getEmbeddedDocumentExtractor(context);
         if (config.getOcrStrategy() == NO_OCR) {
             ocrParser = null;

@@ -82,6 +82,9 @@ public class PDFParserConfig implements Serializable {
     //True if bookmarks content should be extracted
     private boolean extractBookmarksText = true;
 
+    //True if table detection should be performed
+    private boolean detectTables = true;
+
     //True if inline PDXImage objects should be extracted
     private boolean extractInlineImages = false;
 
@@ -288,6 +291,25 @@ public class PDFParserConfig implements Serializable {
     public void setExtractBookmarksText(boolean extractBookmarksText) {
         this.extractBookmarksText = extractBookmarksText;
         userConfigured.add("extractBookmarksText");
+    }
+
+    /**
+     * @see #setDetectTables(boolean)
+     */
+    public boolean isDetectTables() {
+        return detectTables;
+    }
+
+    /**
+     * If true, detect and extract table structures from PDF content.
+     * <p/>
+     * The default is <code>true</code>
+     *
+     * @param detectTables whether to perform table detection
+     */
+    public void setDetectTables(boolean detectTables) {
+        this.detectTables = detectTables;
+        userConfigured.add("detectTables");
     }
 
     public boolean isExtractFontNames() {
