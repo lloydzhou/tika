@@ -30,12 +30,12 @@ import org.apache.pdfbox.text.TextPosition;
  */
 class TableDetector {
     
-    private static final float MIN_COLUMN_WIDTH = 10f;  // Reduced from 20f for narrower columns
-    private static final float MIN_ROW_HEIGHT = 8f;
+    private static final float MIN_COLUMN_WIDTH = 5f;  // Further reduced for narrow columns and Chinese characters
+    private static final float MIN_ROW_HEIGHT = 6f;   // Reduced for tighter row spacing
     private static final int MIN_ROWS = 2;
     private static final int MIN_COLUMNS = 2;
-    private static final float ALIGNMENT_TOLERANCE = 5f; // Increased from 2f for better alignment flexibility
-    private static final float MAX_COLUMN_TO_CHAR_RATIO = 0.7f; // Maximum ratio of columns to characters to avoid false positives
+    private static final float ALIGNMENT_TOLERANCE = 8f; // Increased for more flexible alignment detection
+    private static final float MAX_COLUMN_TO_CHAR_RATIO = 1.2f; // Increased to allow more columns relative to content
     
     /**
      * Represents a detected table structure.
@@ -191,8 +191,8 @@ class TableDetector {
         }
         
         // Filter columns that appear in multiple rows (table-like alignment)
-        // Require less strict alignment for table detection - reduced from 60% to 40%
-        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.4)); // At least 40% of rows
+        // Further reduced alignment requirement for better table detection - reduced to 30%
+        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.3)); // At least 30% of rows
         List<Float> columnPositions = new ArrayList<>();
         
         for (Map.Entry<Float, Integer> entry : columnCounts.entrySet()) {
@@ -247,8 +247,8 @@ class TableDetector {
                 
                 for (TextPosition pos : rowPositions) {
                     float distance = Math.abs(pos.getX() - colX);
-                    // Increased tolerance for matching text to columns
-                    if (distance < minDistance && distance <= ALIGNMENT_TOLERANCE * 3) {
+                    // Further increased tolerance for matching text to columns
+                    if (distance < minDistance && distance <= ALIGNMENT_TOLERANCE * 4) {
                         minDistance = distance;
                         closestPos = pos;
                     }
@@ -284,8 +284,8 @@ class TableDetector {
             int expectedColumns = columnPositions.size();
             
             for (TableRow row : rows) {
-                // Allow some flexibility in number of cells per row
-                if (row.getCells().size() < expectedColumns / 2) {
+                // Allow more flexibility in number of cells per row - reduced from 1/2 to 1/3
+                if (row.getCells().size() < Math.max(1, expectedColumns / 3)) {
                     hasValidGrid = false;
                     break;
                 }
@@ -335,7 +335,7 @@ class TableDetector {
         }
         
         // If we have very few characters, don't apply the ratio check strictly
-        if (totalCharacters < 10) {
+        if (totalCharacters < 15) {
             return true;
         }
         
@@ -349,8 +349,10 @@ class TableDetector {
         }
         
         // Additional check: if average characters per cell is too low, likely false positive
+        // Made more lenient for simple tables with short content
         float avgCharsPerCell = (float) totalCharacters / Math.max(1, nonEmptyColumns);
-        if (avgCharsPerCell < 1.5f && columnToCharRatio > 0.5f) {
+        
+        if (avgCharsPerCell < 1.0f && columnToCharRatio > 0.8f) {
             return false;
         }
         

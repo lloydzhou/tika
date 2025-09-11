@@ -201,7 +201,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
     
     // Table detection support
     private List<TextPosition> currentPageTextPositions = new ArrayList<>();
-    private boolean tableDetectionEnabled;
+    protected boolean tableDetectionEnabled;
 
     AbstractPDF2XHTML(PDDocument pdDocument, ContentHandler handler, ParseContext context,
                       Metadata metadata, PDFParserConfig config) throws IOException {
@@ -1563,7 +1563,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         }
     }
     
-    private void renderTable(TableDetector.TableStructure table) throws SAXException {
+    protected void renderTable(TableDetector.TableStructure table) throws SAXException {
         xhtml.startElement("table");
         
         for (TableDetector.TableRow row : table.getRows()) {
