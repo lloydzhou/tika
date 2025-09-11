@@ -346,16 +346,22 @@ public class OOXMLTikaBodyPartHandler
         OfficeParserConfig officeConfig = context != null ? context.get(OfficeParserConfig.class) : null;
         boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
         
-        AttributesImpl attr = new AttributesImpl();
-        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
-        if (picDescription != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
-        } else if (picFileName != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
-        }
+        // If we should convert to base64, don't create an img tag here - let handleEmbeddedFile do it
+        // This prevents duplicate img tags and ensures proper base64 conversion
+        if (!convertToBase64) {
+            AttributesImpl attr = new AttributesImpl();
+            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
+            if (picDescription != null) {
+                attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
+            } else if (picFileName != null) {
+                attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
+            }
 
-        xhtml.startElement("img", attr);
-        xhtml.endElement("img");
+            xhtml.startElement("img", attr);
+            xhtml.endElement("img");
+        }
+        // If convertToBase64 is true, we intentionally do nothing here
+        // The image will be processed by handleEmbeddedFile which will create the proper base64 img tag
     }
 
     @Override
