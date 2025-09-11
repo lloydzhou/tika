@@ -38,6 +38,7 @@ public class OfficeParserConfig implements Serializable {
     private boolean writeSelectHeadersInBody = false;
 
     private boolean convertEmbeddedImagesToBase64 = false;
+    private boolean suppressPackageEntryElements = false;
 
     private boolean extractAllAlternativesFromMSG = false;
     private String dateOverrideFormat = null;
@@ -313,6 +314,29 @@ public class OfficeParserConfig implements Serializable {
      */
     public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
         this.convertEmbeddedImagesToBase64 = convertEmbeddedImagesToBase64;
+    }
+
+    /**
+     * Whether to suppress the generation of package-entry div elements for embedded objects.
+     * When set to true, embedded objects (like images, OLE objects) will not be wrapped 
+     * in &lt;div class="package-entry"&gt; elements, reducing HTML clutter.
+     * Default is false (package-entry elements are generated).
+     * 
+     * @return true if package-entry elements should be suppressed
+     */
+    public boolean isSuppressPackageEntryElements() {
+        return suppressPackageEntryElements;
+    }
+
+    /**
+     * Set whether to suppress package-entry div elements for embedded objects.
+     * When set to true, embedded objects will not be wrapped in div elements with 
+     * class="package-entry", which can help reduce HTML output clutter.
+     * 
+     * @param suppressPackageEntryElements true to suppress package-entry elements
+     */
+    public void setSuppressPackageEntryElements(boolean suppressPackageEntryElements) {
+        this.suppressPackageEntryElements = suppressPackageEntryElements;
     }
 }
 

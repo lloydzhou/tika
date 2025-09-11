@@ -340,6 +340,12 @@ public class OOXMLTikaBodyPartHandler
         // Since this method doesn't have access to image data, we can only create embedded: URLs
         // The actual base64 conversion happens in AbstractOOXMLExtractor.handleEmbeddedFile()
         // when the image data is available.
+        //
+        // However, we need to check if convertEmbeddedImagesToBase64 is enabled to determine
+        // whether to use embedded: URLs or let the extractor handle base64 conversion.
+        OfficeParserConfig officeConfig = context != null ? context.get(OfficeParserConfig.class) : null;
+        boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
+        
         AttributesImpl attr = new AttributesImpl();
         attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
         if (picDescription != null) {

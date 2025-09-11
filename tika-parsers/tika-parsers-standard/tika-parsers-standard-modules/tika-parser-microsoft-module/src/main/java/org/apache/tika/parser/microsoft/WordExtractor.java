@@ -617,6 +617,8 @@ public class WordExtractor extends AbstractPOIFSExtractor {
             // Image data not available
         }
         
+        // For inline images in the document body, we always convert to base64 if the flag is set
+        // But only for inline images, not for package-entry images
         AttributesImpl attr = createImageAttributes(convertToBase64, imageBytes, filename, mimeType, filename);
         xhtml.startElement("img", attr);
         xhtml.endElement("img");

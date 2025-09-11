@@ -466,22 +466,23 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
         // Get the content type
         metadata.set(Metadata.CONTENT_TYPE, part.getContentType());
 
-        // Special handling for images when base64 conversion is enabled
-        String contentType = part.getContentType();
-        String resourceName = metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY);
+        // Check if we should convert embedded images to base64
+        OfficeParserConfig officeConfig = context.get(OfficeParserConfig.class);
+        boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
+        boolean suppressPackageEntry = (officeConfig != null) ? officeConfig.isSuppressPackageEntryElements() : false;
         
-        if (config != null && config.isConvertEmbeddedImagesToBase64() && 
-            TikaCoreProperties.EmbeddedResourceType.INLINE.equals(embeddedResourceType) &&
-            contentType != null && contentType.startsWith("image/") && resourceName != null) {
-            
-            // Handle as inline base64 image
-            handleInlineImage(part, xhtml, resourceName, contentType);
+        // If this is an image and we should convert to base64, handle it specially
+        // For images, we convert to base64 regardless of the embeddedResourceType
+        if (convertToBase64 && part.getContentType() != null && part.getContentType().startsWith("image/")) {
+            handleInlineImage(part, xhtml, metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY), part.getContentType());
         } else {
             // Call the recursing handler (standard behavior)
             if (embeddedExtractor.shouldParseEmbedded(metadata)) {
                 try (TikaInputStream tis = TikaInputStream.get(part.getInputStream())) {
+                    // If suppressPackageEntry is true, we skip the HTML wrapping
+                    boolean outputHtml = !suppressPackageEntry;
                     embeddedExtractor
-                            .parseEmbedded(tis, xhtml, metadata, true);
+                            .parseEmbedded(tis, xhtml, metadata, outputHtml);
                 }
             }
         }

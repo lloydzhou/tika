@@ -473,6 +473,7 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
                     String filename = data.getFileName() != null ? data.getFileName() : ("image." + (extension != null ? extension : "png"));
                     String altText = picture.getDescription();
                     
+                    // For inline images in the document body, we always convert to base64 if the flag is set
                     AttributesImpl attr = createImageAttributes(convertToBase64, imageBytes, filename, mimeType, altText);
 
                     xhtml.startElement("img", attr);

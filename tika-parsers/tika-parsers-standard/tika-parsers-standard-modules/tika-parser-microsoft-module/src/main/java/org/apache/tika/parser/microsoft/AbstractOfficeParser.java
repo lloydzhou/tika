@@ -190,4 +190,13 @@ public abstract class AbstractOfficeParser implements Parser {
         return defaultOfficeParserConfig.isConvertEmbeddedImagesToBase64();
     }
 
+    @Field
+    public void setSuppressPackageEntryElements(boolean suppressPackageEntryElements) {
+        defaultOfficeParserConfig.setSuppressPackageEntryElements(suppressPackageEntryElements);
+    }
+
+    public boolean isSuppressPackageEntryElements() {
+        return defaultOfficeParserConfig.isSuppressPackageEntryElements();
+    }
+
 }
