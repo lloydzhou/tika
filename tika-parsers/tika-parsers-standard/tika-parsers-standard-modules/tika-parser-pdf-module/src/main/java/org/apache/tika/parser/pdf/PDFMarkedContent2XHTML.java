@@ -273,7 +273,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                     if (pageTextPositions.containsKey(page)) {
                         List<TextPosition> textPositions = pageTextPositions.get(page);
                         if (!textPositions.isEmpty()) {
-                            List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions);
+                            List<TableDetector.TableStructure> tables = TableDetector.detectTables(textPositions, config);
                             for (TableDetector.TableStructure table : tables) {
                                 renderTable(table);
                             }

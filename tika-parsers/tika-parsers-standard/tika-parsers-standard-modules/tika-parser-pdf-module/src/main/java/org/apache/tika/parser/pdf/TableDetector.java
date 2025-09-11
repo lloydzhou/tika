@@ -101,19 +101,26 @@ class TableDetector {
      * Detects table structures in the given list of text positions.
      */
     static List<TableStructure> detectTables(List<TextPosition> textPositions) {
+        return detectTables(textPositions, new PDFParserConfig());
+    }
+    
+    /**
+     * Detects table structures in the given list of text positions using the provided configuration.
+     */
+    static List<TableStructure> detectTables(List<TextPosition> textPositions, PDFParserConfig config) {
         if (textPositions.isEmpty()) {
             return Collections.emptyList();
         }
         
         // Group text positions by approximate Y coordinate (rows)
-        Map<Float, List<TextPosition>> rowGroups = groupByRows(textPositions);
+        Map<Float, List<TextPosition>> rowGroups = groupByRows(textPositions, config);
         
         if (rowGroups.size() < MIN_ROWS) {
             return Collections.emptyList();
         }
         
         // Analyze column alignment across rows
-        List<Float> columnPositions = detectColumnPositions(rowGroups);
+        List<Float> columnPositions = detectColumnPositions(rowGroups, config);
         
         if (columnPositions.size() < MIN_COLUMNS) {
             return Collections.emptyList();
@@ -121,7 +128,7 @@ class TableDetector {
         
         // Build table structure
         List<TableStructure> tables = new ArrayList<>();
-        TableStructure table = buildTableStructure(rowGroups, columnPositions);
+        TableStructure table = buildTableStructure(rowGroups, columnPositions, config);
         if (table != null) {
             tables.add(table);
         }
@@ -129,7 +136,7 @@ class TableDetector {
         return tables;
     }
     
-    private static Map<Float, List<TextPosition>> groupByRows(List<TextPosition> textPositions) {
+    private static Map<Float, List<TextPosition>> groupByRows(List<TextPosition> textPositions, PDFParserConfig config) {
         Map<Float, List<TextPosition>> rowGroups = new HashMap<>();
         
         for (TextPosition pos : textPositions) {
@@ -143,7 +150,7 @@ class TableDetector {
             // Find existing row with similar Y coordinate
             Float matchingY = null;
             for (Float existingY : rowGroups.keySet()) {
-                if (Math.abs(y - existingY) <= ALIGNMENT_TOLERANCE) {
+                if (Math.abs(y - existingY) <= config.getTableAlignmentTolerance()) {
                     matchingY = existingY;
                     break;
                 }
@@ -160,7 +167,7 @@ class TableDetector {
         return rowGroups;
     }
     
-    private static List<Float> detectColumnPositions(Map<Float, List<TextPosition>> rowGroups) {
+    private static List<Float> detectColumnPositions(Map<Float, List<TextPosition>> rowGroups, PDFParserConfig config) {
         Map<Float, Integer> columnCounts = new HashMap<>();
         
         // Count how often each X position appears across rows
@@ -176,7 +183,7 @@ class TableDetector {
                 // Find existing column with similar X coordinate
                 Float matchingX = null;
                 for (Float existingX : columnCounts.keySet()) {
-                    if (Math.abs(x - existingX) <= ALIGNMENT_TOLERANCE) {
+                    if (Math.abs(x - existingX) <= config.getTableAlignmentTolerance()) {
                         matchingX = existingX;
                         break;
                     }
@@ -191,8 +198,7 @@ class TableDetector {
         }
         
         // Filter columns that appear in multiple rows (table-like alignment)
-        // Further reduced alignment requirement for better table detection - reduced to 30%
-        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * 0.3)); // At least 30% of rows
+        int minAppearances = Math.max(MIN_ROWS, (int)(rowGroups.size() * config.getTableColumnAppearanceRate()));
         List<Float> columnPositions = new ArrayList<>();
         
         for (Map.Entry<Float, Integer> entry : columnCounts.entrySet()) {
@@ -207,7 +213,7 @@ class TableDetector {
         if (columnPositions.size() >= MIN_COLUMNS) {
             for (int i = 1; i < columnPositions.size(); i++) {
                 float spacing = columnPositions.get(i) - columnPositions.get(i - 1);
-                if (spacing < MIN_COLUMN_WIDTH) {
+                if (spacing < config.getTableMinColumnWidth()) {
                     // Columns too close together, likely not a table
                     return new ArrayList<>();
                 }
@@ -217,7 +223,7 @@ class TableDetector {
         return columnPositions;
     }
     
-    private static TableStructure buildTableStructure(Map<Float, List<TextPosition>> rowGroups, List<Float> columnPositions) {
+    private static TableStructure buildTableStructure(Map<Float, List<TextPosition>> rowGroups, List<Float> columnPositions, PDFParserConfig config) {
         List<TableRow> rows = new ArrayList<>();
         
         // Sort rows by Y position (descending, PDF coordinates are bottom-up)
@@ -247,8 +253,8 @@ class TableDetector {
                 
                 for (TextPosition pos : rowPositions) {
                     float distance = Math.abs(pos.getX() - colX);
-                    // Further increased tolerance for matching text to columns
-                    if (distance < minDistance && distance <= ALIGNMENT_TOLERANCE * 4) {
+                    // Use configurable tolerance for matching text to columns
+                    if (distance < minDistance && distance <= config.getTableAlignmentTolerance() * 4) {
                         minDistance = distance;
                         closestPos = pos;
                     }
@@ -267,8 +273,8 @@ class TableDetector {
                     // Empty cell
                     float cellWidth = (i < columnPositions.size() - 1) 
                         ? columnPositions.get(i + 1) - colX 
-                        : MIN_COLUMN_WIDTH;
-                    TableCell cell = new TableCell("", colX, y, cellWidth, MIN_ROW_HEIGHT);
+                        : config.getTableMinColumnWidth();
+                    TableCell cell = new TableCell("", colX, y, cellWidth, config.getTableMinRowHeight());
                     cells.add(cell);
                 }
             }
@@ -292,12 +298,12 @@ class TableDetector {
             }
             
             if (hasValidGrid) {
-                float tableWidth = maxX - minX + MIN_COLUMN_WIDTH;
-                float tableHeight = maxY - minY + MIN_ROW_HEIGHT;
+                float tableWidth = maxX - minX + config.getTableMinColumnWidth();
+                float tableHeight = maxY - minY + config.getTableMinRowHeight();
                 TableStructure table = new TableStructure(rows, minX, minY, tableWidth, tableHeight);
                 
                 // Additional validation to prevent false positives (header/footer detection)
-                if (isLikelyTable(table)) {
+                if (isLikelyTable(table, config)) {
                     return table;
                 } else {
                     return null; // Reject this as a false positive
@@ -312,7 +318,7 @@ class TableDetector {
      * Validate that a detected table structure is likely a real table and not 
      * a false positive (such as header/footer text laid out in a grid pattern).
      */
-    private static boolean isLikelyTable(TableStructure table) {
+    private static boolean isLikelyTable(TableStructure table, PDFParserConfig config) {
         if (table.getRows().isEmpty()) {
             return false;
         }
@@ -344,7 +350,7 @@ class TableDetector {
         
         // If the ratio is too high (many columns relative to content), 
         // it's likely a false positive (header/footer with character-per-column layout)
-        if (columnToCharRatio > MAX_COLUMN_TO_CHAR_RATIO) {
+        if (columnToCharRatio > config.getTableMaxColumnToCharRatio()) {
             return false;
         }
         

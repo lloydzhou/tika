@@ -23,6 +23,13 @@ Create a `tika-config.xml` file:
         <!-- Enable table detection (default: true) -->
         <param name="detectTables" type="bool">true</param>
         
+        <!-- Table detection algorithm parameters -->
+        <param name="tableMinColumnWidth" type="float">5.0</param>
+        <param name="tableMinRowHeight" type="float">6.0</param>
+        <param name="tableAlignmentTolerance" type="float">8.0</param>
+        <param name="tableMaxColumnToCharRatio" type="float">1.2</param>
+        <param name="tableColumnAppearanceRate" type="float">0.3</param>
+        
         <!-- Optional: Enable marked content extraction (default: false) -->
         <param name="extractMarkedContent" type="bool">false</param>
         
@@ -56,6 +63,13 @@ Create a `tika.properties` file:
 # Enable table detection in PDF parser (default is true)
 pdf.detectTables=true
 
+# Table detection algorithm parameters
+pdf.tableMinColumnWidth=5.0
+pdf.tableMinRowHeight=6.0
+pdf.tableAlignmentTolerance=8.0
+pdf.tableMaxColumnToCharRatio=1.2
+pdf.tableColumnAppearanceRate=0.3
+
 # Optional: Enable marked content extraction (default is false)
 pdf.extractMarkedContent=false
 
@@ -73,6 +87,13 @@ PDFParserConfig config = new PDFParserConfig();
 
 // Enable table detection (enabled by default)
 config.setDetectTables(true);
+
+// Configure table detection algorithm parameters
+config.setTableMinColumnWidth(5.0f);
+config.setTableMinRowHeight(6.0f);
+config.setTableAlignmentTolerance(8.0f);
+config.setTableMaxColumnToCharRatio(1.2f);
+config.setTableColumnAppearanceRate(0.3f);
 
 // Optional: Enable marked content extraction
 config.setExtractMarkedContent(false);
@@ -164,14 +185,66 @@ Detected tables are output as HTML table elements:
 
 ## Algorithm Parameters
 
-The table detection algorithm uses several parameters that can be understood but not directly configured:
+The table detection algorithm uses several configurable parameters that can be adjusted for better detection:
 
-- **Minimum Column Width**: 10 pixels (columns closer together may not be detected)
-- **Minimum Row Height**: 8 pixels 
-- **Alignment Tolerance**: 5 pixels (text positions within this tolerance are considered aligned)
+### Configurable Parameters
+
+- **tableMinColumnWidth**: Minimum column width in pixels (default: 5.0)
+  - Columns closer together than this value may not be detected as separate columns
+  - Reduce for narrow columns, increase to avoid false column detection
+
+- **tableMinRowHeight**: Minimum row height in pixels (default: 6.0)
+  - Rows closer together than this value may not be detected as separate rows
+  - Reduce for tightly spaced tables, increase for widely spaced content
+
+- **tableAlignmentTolerance**: Alignment tolerance in pixels (default: 8.0)
+  - Text positions within this tolerance are considered aligned in the same column
+  - Increase for more flexible alignment detection, decrease for stricter alignment
+
+- **tableMaxColumnToCharRatio**: Maximum column-to-character ratio (default: 1.2)
+  - Tables with higher ratios may be rejected as false positives
+  - Increase to allow more columns relative to content, decrease to be more strict
+
+- **tableColumnAppearanceRate**: Minimum column appearance rate (default: 0.3 or 30%)
+  - Columns must appear in at least this percentage of rows to be considered valid
+  - Reduce for more lenient detection, increase for stricter column consistency
+
+### Fixed Parameters
+
 - **Minimum Columns**: 2 (at least 2 columns required for table detection)
 - **Minimum Rows**: 2 (at least 2 rows required for table detection)
-- **Column Appearance Rate**: 40% (columns must appear in at least 40% of rows)
+
+## Configuration Tuning
+
+### For Better Detection of Narrow Tables
+If your tables have very narrow columns or Chinese/Asian characters:
+```xml
+<param name="tableMinColumnWidth" type="float">3.0</param>
+<param name="tableAlignmentTolerance" type="float">10.0</param>
+```
+
+### For Strict Table Detection
+If you're getting too many false positives:
+```xml
+<param name="tableMaxColumnToCharRatio" type="float">0.8</param>
+<param name="tableColumnAppearanceRate" type="float">0.5</param>
+<param name="tableAlignmentTolerance" type="float">5.0</param>
+```
+
+### For Loose/Irregular Tables
+If your tables have irregular spacing or alignment:
+```xml
+<param name="tableAlignmentTolerance" type="float">12.0</param>
+<param name="tableColumnAppearanceRate" type="float">0.2</param>
+<param name="tableMaxColumnToCharRatio" type="float">1.5</param>
+```
+
+### For Dense Content with Many Small Tables
+```xml
+<param name="tableMinColumnWidth" type="float">8.0</param>
+<param name="tableMinRowHeight" type="float">10.0</param>
+<param name="tableColumnAppearanceRate" type="float">0.4</param>
+```
 
 ## Best Practices
 
@@ -179,6 +252,8 @@ The table detection algorithm uses several parameters that can be understood but
 2. **Handle Empty Cells**: The algorithm handles sparse data where some cells may be empty
 3. **Multiple Tables**: The algorithm can detect multiple tables on the same page
 4. **Performance**: Table detection has minimal performance impact on PDF parsing
+5. **Test Parameters**: Start with default values and adjust based on your specific PDF content
+6. **Monitor False Positives**: If getting too many false tables, increase `tableMaxColumnToCharRatio` threshold
 
 ## Troubleshooting
 
@@ -187,10 +262,13 @@ The table detection algorithm uses several parameters that can be understood but
 If tables aren't being detected:
 
 1. Check that `detectTables=true` is set in your configuration
-2. Verify the table has regular column alignment (within 5 pixels)
-3. Ensure columns are at least 10 pixels apart
+2. Verify the table has regular column alignment (within your `tableAlignmentTolerance` setting)
+3. Ensure columns are at least `tableMinColumnWidth` pixels apart
 4. Check that the table has at least 2 rows and 2 columns
-5. Verify that columns appear consistently across at least 40% of rows
+5. Verify that columns appear consistently across at least `tableColumnAppearanceRate` percentage of rows
+6. Try reducing `tableMinColumnWidth` for narrow columns
+7. Try increasing `tableAlignmentTolerance` for irregular alignment
+8. Try reducing `tableColumnAppearanceRate` for sparse tables
 
 ### Debug Information
 
