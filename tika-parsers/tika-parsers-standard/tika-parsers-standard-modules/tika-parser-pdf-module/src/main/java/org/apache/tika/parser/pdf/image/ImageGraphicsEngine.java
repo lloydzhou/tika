@@ -70,6 +70,7 @@ import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.parser.pdf.PDMetadataExtractor;
 import org.apache.tika.sax.EmbeddedContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
+import org.apache.tika.utils.ImageUtils;
 
 /**
  * Copied nearly verbatim from PDFBox
@@ -389,10 +390,24 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
         String suffix = getSuffix(pdImage, metadata);
         String fileName = "image" + imageNumber + "." + suffix;
 
+        // Check if embedded images should be converted to base64 from parser config
+        boolean convertToBase64 = pdfParserConfig.isConvertEmbeddedImagesToBase64();
 
-        AttributesImpl attr = new AttributesImpl();
-        attr.addAttribute("", "src", "src", "CDATA", "embedded:" + fileName);
-        attr.addAttribute("", "alt", "alt", "CDATA", fileName);
+        // Try to get image data for base64 conversion if configured
+        byte[] imageData = null;
+        if (convertToBase64) {
+            try {
+                UnsynchronizedByteArrayOutputStream buffer = UnsynchronizedByteArrayOutputStream.builder().get();
+                writeToBuffer(pdImage, suffix, useDirectJPEG, buffer);
+                imageData = buffer.toByteArray();
+            } catch (Exception e) {
+                // If we can't get image data, fall back to embedded: URL
+                imageData = null;
+            }
+        }
+
+        String mimeType = ImageUtils.guessMimeTypeFromFilename(fileName);
+        AttributesImpl attr = createImageAttributes(convertToBase64, imageData, fileName, mimeType, fileName);
         xhtml.startElement("img", attr);
         xhtml.endElement("img");
 
@@ -511,5 +526,52 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
 
     public List<IOException> getExceptions() {
         return exceptions;
+    }
+
+    /**
+     * Creates image attributes with appropriate src based on whether base64 conversion is enabled.
+     * 
+     * @param convertToBase64 whether to convert to base64 data URLs
+     * @param imageData the raw image bytes (may be null)
+     * @param filename the image filename (for fallback)
+     * @param mimeType the image MIME type (may be null)
+     * @param altText alt text for the image (may be null)
+     * @return AttributesImpl with img tag attributes
+     */
+    private AttributesImpl createImageAttributes(boolean convertToBase64,
+                                                 byte[] imageData, 
+                                                 String filename, 
+                                                 String mimeType, 
+                                                 String altText) {
+        AttributesImpl attr = new AttributesImpl();
+        
+        if (convertToBase64 && imageData != null && imageData.length > 0) {
+            // Try to convert to base64 data URL
+            try {
+                String effectiveMimeType = mimeType != null ? mimeType : ImageUtils.guessMimeTypeFromFilename(filename);
+                if (effectiveMimeType != null) {
+                    String base64Data = java.util.Base64.getEncoder().encodeToString(imageData);
+                    String dataUrl = "data:" + effectiveMimeType + ";base64," + base64Data;
+                    attr.addAttribute("", "src", "src", "CDATA", dataUrl);
+                } else {
+                    // Fallback to embedded: if no MIME type
+                    attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+                }
+            } catch (Exception e) {
+                // Fallback to embedded: if base64 conversion fails
+                attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+            }
+        } else {
+            // Use embedded: reference (traditional behavior)
+            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + filename);
+        }
+        
+        if (altText != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", altText);
+        } else if (filename != null) {
+            attr.addAttribute("", "alt", "alt", "CDATA", filename);
+        }
+        
+        return attr;
     }
 }

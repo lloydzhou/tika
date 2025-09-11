@@ -82,6 +82,16 @@ public class PDFParserConfig implements Serializable {
     //True if bookmarks content should be extracted
     private boolean extractBookmarksText = true;
 
+    //True if table detection should be performed
+    private boolean detectTables = true;
+    
+    // Table detection algorithm parameters
+    private float tableMinColumnWidth = 5f;  // Minimum column width in pixels
+    private float tableMinRowHeight = 6f;    // Minimum row height in pixels
+    private float tableAlignmentTolerance = 8f;  // Alignment tolerance in pixels
+    private float tableMaxColumnToCharRatio = 1.2f;  // Maximum ratio of columns to characters
+    private float tableColumnAppearanceRate = 0.3f;  // Minimum rate of column appearance across rows (30%)
+
     //True if inline PDXImage objects should be extracted
     private boolean extractInlineImages = false;
 
@@ -95,6 +105,9 @@ public class PDFParserConfig implements Serializable {
     //True if inline images (as identified by their object id within
     //a pdf file) should only be extracted once.
     private boolean extractUniqueInlineImagesOnly = true;
+
+    //True if embedded: image URLs should be converted to base64 data URLs
+    private boolean convertEmbeddedImagesToBase64 = false;
 
     //Should the PDFParser _try_ to extract marked content/structure tags (backoff to regular
     //text extraction if the given PDF doesn't have marked content)
@@ -287,6 +300,120 @@ public class PDFParserConfig implements Serializable {
         userConfigured.add("extractBookmarksText");
     }
 
+    /**
+     * @see #setDetectTables(boolean)
+     */
+    public boolean isDetectTables() {
+        return detectTables;
+    }
+
+    /**
+     * If true, detect and extract table structures from PDF content.
+     * <p/>
+     * The default is <code>true</code>
+     *
+     * @param detectTables whether to perform table detection
+     */
+    public void setDetectTables(boolean detectTables) {
+        this.detectTables = detectTables;
+        userConfigured.add("detectTables");
+    }
+
+    /**
+     * @return minimum column width for table detection (in pixels)
+     */
+    public float getTableMinColumnWidth() {
+        return tableMinColumnWidth;
+    }
+
+    /**
+     * Set the minimum column width for table detection.
+     * Columns closer together than this value may not be detected as separate columns.
+     * Default is 5.0 pixels.
+     *
+     * @param tableMinColumnWidth minimum column width in pixels
+     */
+    public void setTableMinColumnWidth(float tableMinColumnWidth) {
+        this.tableMinColumnWidth = tableMinColumnWidth;
+        userConfigured.add("tableMinColumnWidth");
+    }
+
+    /**
+     * @return minimum row height for table detection (in pixels)
+     */
+    public float getTableMinRowHeight() {
+        return tableMinRowHeight;
+    }
+
+    /**
+     * Set the minimum row height for table detection.
+     * Rows closer together than this value may not be detected as separate rows.
+     * Default is 6.0 pixels.
+     *
+     * @param tableMinRowHeight minimum row height in pixels
+     */
+    public void setTableMinRowHeight(float tableMinRowHeight) {
+        this.tableMinRowHeight = tableMinRowHeight;
+        userConfigured.add("tableMinRowHeight");
+    }
+
+    /**
+     * @return alignment tolerance for table detection (in pixels)
+     */
+    public float getTableAlignmentTolerance() {
+        return tableAlignmentTolerance;
+    }
+
+    /**
+     * Set the alignment tolerance for table detection.
+     * Text positions within this tolerance are considered aligned in the same column.
+     * Default is 8.0 pixels.
+     *
+     * @param tableAlignmentTolerance alignment tolerance in pixels
+     */
+    public void setTableAlignmentTolerance(float tableAlignmentTolerance) {
+        this.tableAlignmentTolerance = tableAlignmentTolerance;
+        userConfigured.add("tableAlignmentTolerance");
+    }
+
+    /**
+     * @return maximum column-to-character ratio for table validation
+     */
+    public float getTableMaxColumnToCharRatio() {
+        return tableMaxColumnToCharRatio;
+    }
+
+    /**
+     * Set the maximum column-to-character ratio for table validation.
+     * Tables with a higher ratio may be rejected as false positives.
+     * Default is 1.2.
+     *
+     * @param tableMaxColumnToCharRatio maximum column-to-character ratio
+     */
+    public void setTableMaxColumnToCharRatio(float tableMaxColumnToCharRatio) {
+        this.tableMaxColumnToCharRatio = tableMaxColumnToCharRatio;
+        userConfigured.add("tableMaxColumnToCharRatio");
+    }
+
+    /**
+     * @return minimum column appearance rate across rows (0.0 to 1.0)
+     */
+    public float getTableColumnAppearanceRate() {
+        return tableColumnAppearanceRate;
+    }
+
+    /**
+     * Set the minimum column appearance rate for table detection.
+     * Columns must appear in at least this percentage of rows to be considered valid.
+     * Default is 0.3 (30%).
+     *
+     * @param tableColumnAppearanceRate minimum column appearance rate (0.0 to 1.0)
+     */
+    public void setTableColumnAppearanceRate(float tableColumnAppearanceRate) {
+        this.tableColumnAppearanceRate = tableColumnAppearanceRate;
+        userConfigured.add("tableColumnAppearanceRate");
+    }
+
     public boolean isExtractFontNames() {
         return extractFontNames;
     }
@@ -367,6 +494,28 @@ public class PDFParserConfig implements Serializable {
     public void setExtractUniqueInlineImagesOnly(boolean extractUniqueInlineImagesOnly) {
         this.extractUniqueInlineImagesOnly = extractUniqueInlineImagesOnly;
         userConfigured.add("extractUniqueInlineImagesOnly");
+    }
+
+    /**
+     * Whether to convert embedded: image URLs to base64 data URLs.
+     * Default is false (use embedded: URLs).
+     *
+     * @return true if embedded: URLs should be converted to base64 data URLs
+     */
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return convertEmbeddedImagesToBase64;
+    }
+
+    /**
+     * Set whether to convert embedded: image URLs to base64 data URLs.
+     * When set to true, inline images will be converted to data: URLs with base64 encoding.
+     * When set to false (default), traditional embedded: URLs will be used.
+     *
+     * @param convertEmbeddedImagesToBase64 true to convert to base64, false to use embedded: URLs
+     */
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        this.convertEmbeddedImagesToBase64 = convertEmbeddedImagesToBase64;
+        userConfigured.add("convertEmbeddedImagesToBase64");
     }
 
     /**

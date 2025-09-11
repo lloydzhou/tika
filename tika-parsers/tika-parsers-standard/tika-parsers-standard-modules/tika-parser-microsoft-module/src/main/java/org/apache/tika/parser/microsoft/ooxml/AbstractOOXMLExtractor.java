@@ -51,6 +51,7 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.exception.WriteLimitReachedException;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
@@ -465,12 +466,59 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
         // Get the content type
         metadata.set(Metadata.CONTENT_TYPE, part.getContentType());
 
-        // Call the recursing handler
-        if (embeddedExtractor.shouldParseEmbedded(metadata)) {
-            try (TikaInputStream tis = TikaInputStream.get(part.getInputStream())) {
-                embeddedExtractor
-                        .parseEmbedded(tis, xhtml, metadata, true);
+        // Check if we should convert embedded images to base64
+        OfficeParserConfig officeConfig = context.get(OfficeParserConfig.class);
+        boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
+        boolean suppressPackageEntry = (officeConfig != null) ? officeConfig.isSuppressPackageEntryElements() : false;
+        
+        // If this is an image and we should convert to base64, handle it specially
+        // For images, we convert to base64 regardless of the embeddedResourceType
+        if (convertToBase64 && part.getContentType() != null && part.getContentType().startsWith("image/")) {
+            handleInlineImage(part, xhtml, metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY), part.getContentType());
+        } else {
+            // Call the recursing handler (standard behavior)
+            if (embeddedExtractor.shouldParseEmbedded(metadata)) {
+                try (TikaInputStream tis = TikaInputStream.get(part.getInputStream())) {
+                    // If suppressPackageEntry is true, we skip the HTML wrapping
+                    boolean outputHtml = !suppressPackageEntry;
+                    embeddedExtractor
+                            .parseEmbedded(tis, xhtml, metadata, outputHtml);
+                }
             }
+        }
+    }
+
+    /**
+     * Handle an inline image by converting it to a base64 data URL if configured to do so.
+     */
+    private void handleInlineImage(PackagePart part, XHTMLContentHandler xhtml, 
+                                   String resourceName, String contentType) 
+            throws SAXException, IOException {
+        try {
+            // Read the image data
+            byte[] imageData;
+            try (InputStream is = part.getInputStream()) {
+                imageData = IOUtils.toByteArray(is);
+            }
+            
+            // Create img element with base64 data URL
+            AttributesImpl attr = new AttributesImpl();
+            String base64Data = java.util.Base64.getEncoder().encodeToString(imageData);
+            String dataUrl = "data:" + contentType + ";base64," + base64Data;
+            attr.addAttribute("", "src", "src", "CDATA", dataUrl);
+            attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            
+            xhtml.startElement("img", attr);
+            xhtml.endElement("img");
+            
+        } catch (Exception e) {
+            // If anything fails, fall back to embedded: URL
+            AttributesImpl attr = new AttributesImpl();
+            attr.addAttribute("", "src", "src", "CDATA", "embedded:" + resourceName);
+            attr.addAttribute("", "alt", "alt", "CDATA", resourceName);
+            
+            xhtml.startElement("img", attr);
+            xhtml.endElement("img");
         }
     }
 

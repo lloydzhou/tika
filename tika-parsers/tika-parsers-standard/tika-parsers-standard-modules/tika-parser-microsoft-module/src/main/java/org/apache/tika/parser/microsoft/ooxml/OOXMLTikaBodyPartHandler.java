@@ -29,6 +29,7 @@ import org.apache.tika.parser.microsoft.OfficeParserConfig;
 import org.apache.tika.parser.microsoft.WordExtractor;
 import org.apache.tika.parser.microsoft.ooxml.xwpf.XWPFStylesShim;
 import org.apache.tika.sax.XHTMLContentHandler;
+import org.apache.tika.parser.ParseContext;
 
 public class OOXMLTikaBodyPartHandler
         implements OOXMLWordAndPowerPointTextHandler.XWPFBodyContentsHandler {
@@ -42,6 +43,7 @@ public class OOXMLTikaBodyPartHandler
     private final boolean includeDeletedText;
     private final boolean includeMoveFromText;
     private final XWPFStylesShim styles;
+    private final ParseContext context;
 
     private int pDepth = 0; //paragraph depth
     private int tableDepth = 0;//table depth
@@ -65,20 +67,31 @@ public class OOXMLTikaBodyPartHandler
     private String paragraphTag = null;
 
     public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml) {
+        this(xhtml, (ParseContext) null);
+    }
+
+    public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, ParseContext context) {
         this.xhtml = xhtml;
         this.styles = XWPFStylesShim.EMPTY_STYLES;
         this.listManager = XWPFListManager.EMPTY_LIST;
         this.includeDeletedText = false;
         this.includeMoveFromText = false;
+        this.context = context;
     }
 
     public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, XWPFStylesShim styles,
                                     XWPFListManager listManager, OfficeParserConfig parserConfig) {
+        this(xhtml, styles, listManager, parserConfig, null);
+    }
+
+    public OOXMLTikaBodyPartHandler(XHTMLContentHandler xhtml, XWPFStylesShim styles,
+                                    XWPFListManager listManager, OfficeParserConfig parserConfig, ParseContext context) {
         this.xhtml = xhtml;
         this.styles = styles;
         this.listManager = listManager;
         this.includeDeletedText = parserConfig.isIncludeDeletedContent();
         this.includeMoveFromText = parserConfig.isIncludeMoveFromContent();
+        this.context = context;
     }
 
     @Override
@@ -324,19 +337,31 @@ public class OOXMLTikaBodyPartHandler
 
     @Override
     public void embeddedPicRef(String picFileName, String picDescription) throws SAXException {
-
-        AttributesImpl attr = new AttributesImpl();
-        if (picFileName != null) {
+        // Since this method doesn't have access to image data, we can only create embedded: URLs
+        // The actual base64 conversion happens in AbstractOOXMLExtractor.handleEmbeddedFile()
+        // when the image data is available.
+        //
+        // However, we need to check if convertEmbeddedImagesToBase64 is enabled to determine
+        // whether to use embedded: URLs or let the extractor handle base64 conversion.
+        OfficeParserConfig officeConfig = context != null ? context.get(OfficeParserConfig.class) : null;
+        boolean convertToBase64 = (officeConfig != null) ? officeConfig.isConvertEmbeddedImagesToBase64() : false;
+        
+        // If we should convert to base64, don't create an img tag here - let handleEmbeddedFile do it
+        // This prevents duplicate img tags and ensures proper base64 conversion
+        if (!convertToBase64) {
+            AttributesImpl attr = new AttributesImpl();
             attr.addAttribute("", "src", "src", "CDATA", "embedded:" + picFileName);
+            if (picDescription != null) {
+                attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
+            } else if (picFileName != null) {
+                attr.addAttribute("", "alt", "alt", "CDATA", picFileName);
+            }
+
+            xhtml.startElement("img", attr);
+            xhtml.endElement("img");
         }
-        if (picDescription != null) {
-            attr.addAttribute("", "alt", "alt", "CDATA", picDescription);
-        }
-
-        xhtml.startElement("img", attr);
-        xhtml.endElement("img");
-
-
+        // If convertToBase64 is true, we intentionally do nothing here
+        // The image will be processed by handleEmbeddedFile which will create the proper base64 img tag
     }
 
     @Override

@@ -92,6 +92,7 @@ import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField;
 import org.apache.pdfbox.pdmodel.interactive.form.PDXFAResource;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 import org.apache.pdfbox.util.Matrix;
 import org.apache.pdfbox.util.Vector;
@@ -197,6 +198,10 @@ class AbstractPDF2XHTML extends PDFTextStripper {
     boolean containsDamagedFont = false;
 
     int num3DAnnotations = 0;
+    
+    // Table detection support
+    private List<TextPosition> currentPageTextPositions = new ArrayList<>();
+    protected boolean tableDetectionEnabled;
 
     AbstractPDF2XHTML(PDDocument pdDocument, ContentHandler handler, ParseContext context,
                       Metadata metadata, PDFParserConfig config) throws IOException {
@@ -205,6 +210,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         this.context = context;
         this.metadata = metadata;
         this.config = config;
+        this.tableDetectionEnabled = config.isDetectTables();
         embeddedDocumentExtractor = EmbeddedDocumentUtil.getEmbeddedDocumentExtractor(context);
         if (config.getOcrStrategy() == NO_OCR) {
             ocrParser = null;
@@ -243,6 +249,9 @@ class AbstractPDF2XHTML extends PDFTextStripper {
 
     @Override
     protected void startPage(PDPage page) throws IOException {
+        // Initialize table detection for this page
+        currentPageTextPositions.clear();
+        
         try {
             xhtml.startElement("div", "class", "page");
         } catch (SAXException e) {
@@ -738,6 +747,15 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         } finally {
             totalCharsPerPage = 0;
             unmappedUnicodeCharsPerPage = 0;
+        }
+        
+        // Detect and render tables at end of page
+        if (tableDetectionEnabled && !currentPageTextPositions.isEmpty()) {
+            try {
+                detectAndRenderTables();
+            } catch (SAXException e) {
+                throw new IOException("Unable to render detected tables", e);
+            }
         }
 
         if (config.isExtractFontNames()) {
@@ -1525,5 +1543,43 @@ class AbstractPDF2XHTML extends PDFTextStripper {
         BEFORE_DOCUMENT_CLOSE, BEFORE_DOCUMENT_PRINT, BEFORE_DOCUMENT_SAVE, DOCUMENT_OPEN,
         FORM_FIELD, FORM_FIELD_FORMATTED, FORM_FIELD_KEYSTROKE, FORM_FIELD_RECALCULATE,
         FORM_FIELD_VALUE_CHANGE, PAGE_CLOSE, PAGE_OPEN, BOOKMARK,
+    }
+    
+    @Override
+    protected void processTextPosition(TextPosition text) {
+        super.processTextPosition(text);
+        
+        // Collect text positions for table detection
+        if (tableDetectionEnabled && text != null && text.getUnicode() != null && !text.getUnicode().trim().isEmpty()) {
+            currentPageTextPositions.add(text);
+        }
+    }
+    
+    private void detectAndRenderTables() throws SAXException {
+        List<TableDetector.TableStructure> tables = TableDetector.detectTables(currentPageTextPositions);
+        
+        for (TableDetector.TableStructure table : tables) {
+            renderTable(table);
+        }
+    }
+    
+    protected void renderTable(TableDetector.TableStructure table) throws SAXException {
+        xhtml.startElement("table");
+        
+        for (TableDetector.TableRow row : table.getRows()) {
+            xhtml.startElement("tr");
+            
+            for (TableDetector.TableCell cell : row.getCells()) {
+                xhtml.startElement("td");
+                if (cell.getText() != null && !cell.getText().trim().isEmpty()) {
+                    xhtml.characters(cell.getText().trim());
+                }
+                xhtml.endElement("td");
+            }
+            
+            xhtml.endElement("tr");
+        }
+        
+        xhtml.endElement("table");
     }
 }

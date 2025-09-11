@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+  <parsers>
+    <parser class="org.apache.tika.parser.pdf.PDFParser">
+      <params>
+        <!-- Enable table detection -->
+        <param name="detectTables" type="bool">true</param>
+        
+        <!-- Table detection algorithm parameters - optimized for better detection -->
+        <param name="tableMinColumnWidth" type="float">5.0</param>
+        <param name="tableMinRowHeight" type="float">6.0</param>
+        <param name="tableAlignmentTolerance" type="float">8.0</param>
+        <param name="tableMaxColumnToCharRatio" type="float">1.2</param>
+        <param name="tableColumnAppearanceRate" type="float">0.3</param>
+        
+        <!-- Enable marked content extraction for better structure -->
+        <param name="extractMarkedContent" type="bool">true</param>
+        
+        <!-- Other useful PDF parser options -->
+        <param name="extractInlineImages" type="bool">false</param>
+        <param name="extractUniqueInlineImagesOnly" type="bool">true</param>
+        <param name="sortByPosition" type="bool">false</param>
+        <param name="enableAutoSpace" type="bool">true</param>
+        <param name="suppressDuplicateOverlappingText" type="bool">false</param>
+        <param name="extractAnnotationText" type="bool">true</param>
+        <param name="extractAcroFormContent" type="bool">true</param>
+        <param name="extractBookmarksText" type="bool">true</param>
+      </params>
+    </parser>
+  </parsers>
+</properties>

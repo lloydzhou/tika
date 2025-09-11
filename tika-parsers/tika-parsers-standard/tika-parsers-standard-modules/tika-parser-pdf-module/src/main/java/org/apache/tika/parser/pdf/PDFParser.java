@@ -885,6 +885,69 @@ public class PDFParser implements Parser, RenderingParser, Initializable {
     }
 
     @Field
+    public void setConvertEmbeddedImagesToBase64(boolean convertEmbeddedImagesToBase64) {
+        defaultConfig.setConvertEmbeddedImagesToBase64(convertEmbeddedImagesToBase64);
+    }
+
+    public boolean isConvertEmbeddedImagesToBase64() {
+        return defaultConfig.isConvertEmbeddedImagesToBase64();
+    }
+
+    @Field
+    public void setDetectTables(boolean detectTables) {
+        defaultConfig.setDetectTables(detectTables);
+    }
+
+    public boolean isDetectTables() {
+        return defaultConfig.isDetectTables();
+    }
+
+    @Field
+    public void setTableMinColumnWidth(float tableMinColumnWidth) {
+        defaultConfig.setTableMinColumnWidth(tableMinColumnWidth);
+    }
+
+    public float getTableMinColumnWidth() {
+        return defaultConfig.getTableMinColumnWidth();
+    }
+
+    @Field
+    public void setTableMinRowHeight(float tableMinRowHeight) {
+        defaultConfig.setTableMinRowHeight(tableMinRowHeight);
+    }
+
+    public float getTableMinRowHeight() {
+        return defaultConfig.getTableMinRowHeight();
+    }
+
+    @Field
+    public void setTableAlignmentTolerance(float tableAlignmentTolerance) {
+        defaultConfig.setTableAlignmentTolerance(tableAlignmentTolerance);
+    }
+
+    public float getTableAlignmentTolerance() {
+        return defaultConfig.getTableAlignmentTolerance();
+    }
+
+    @Field
+    public void setTableMaxColumnToCharRatio(float tableMaxColumnToCharRatio) {
+        defaultConfig.setTableMaxColumnToCharRatio(tableMaxColumnToCharRatio);
+    }
+
+    public float getTableMaxColumnToCharRatio() {
+        return defaultConfig.getTableMaxColumnToCharRatio();
+    }
+
+    @Field
+    public void setTableColumnAppearanceRate(float tableColumnAppearanceRate) {
+        defaultConfig.setTableColumnAppearanceRate(tableColumnAppearanceRate);
+    }
+
+    public float getTableColumnAppearanceRate() {
+        return defaultConfig.getTableColumnAppearanceRate();
+    }
+
+    @Field
     public void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
         defaultConfig.setExtractInlineImageMetadataOnly(extractInlineImageMetadataOnly);
     }
